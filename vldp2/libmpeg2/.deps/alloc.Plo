@@ -1,0 +1,150 @@
+alloc.lo: alloc.c \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/stdc-predef.h \
+ ../include/config.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/stdlib.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/libc-header-start.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/features.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/sys/cdefs.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/wordsize.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/long-double.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/gnu/stubs.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/gnu/stubs-hard.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/lib/gcc/arm-buildroot-linux-gnueabihf/6.4.0/include/stddef.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/waitflags.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/waitstatus.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/floatn.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/locale_t.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/__locale_t.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/sys/types.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/typesizes.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/clock_t.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/clockid_t.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/time_t.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/timer_t.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/stdint-intn.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/endian.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/endian.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/byteswap.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/byteswap-16.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/uintn-identity.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/sys/select.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/select.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/sigset_t.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/__sigset_t.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/struct_timeval.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/struct_timespec.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/sys/sysmacros.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/sysmacros.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/pthreadtypes.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/thread-shared-types.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/pthreadtypes-arch.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/alloca.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/stdlib-bsearch.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/stdlib-float.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/inttypes.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/lib/gcc/arm-buildroot-linux-gnueabihf/6.4.0/include/stdint.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/stdint.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/wchar.h \
+ /home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/stdint-uintn.h \
+ ../include/mpeg2.h mpeg2_internal.h
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/stdc-predef.h:
+
+../include/config.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/stdlib.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/libc-header-start.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/features.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/sys/cdefs.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/wordsize.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/long-double.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/gnu/stubs.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/gnu/stubs-hard.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/lib/gcc/arm-buildroot-linux-gnueabihf/6.4.0/include/stddef.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/waitflags.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/waitstatus.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/floatn.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/locale_t.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/__locale_t.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/sys/types.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/typesizes.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/clock_t.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/clockid_t.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/time_t.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/timer_t.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/stdint-intn.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/endian.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/endian.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/byteswap.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/byteswap-16.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/uintn-identity.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/sys/select.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/select.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/sigset_t.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/__sigset_t.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/struct_timeval.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/types/struct_timespec.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/sys/sysmacros.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/sysmacros.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/pthreadtypes.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/thread-shared-types.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/pthreadtypes-arch.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/alloca.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/stdlib-bsearch.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/stdlib-float.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/inttypes.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/lib/gcc/arm-buildroot-linux-gnueabihf/6.4.0/include/stdint.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/stdint.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/wchar.h:
+
+/home/developer/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/bits/stdint-uintn.h:
+
+../include/mpeg2.h:
+
+mpeg2_internal.h:

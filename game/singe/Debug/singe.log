@@ -1,0 +1,11 @@
+﻿生成启动时间为 2019/4/15 11:55:41。
+     1>项目“E:\项目\龙穴机\daphne-1.0-src\src\game\singe\singe.vcxproj”在节点 2 上(Build 个目标)。
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120\Microsoft.CppBuild.targets(1193,5): warning MSB8012: TargetPath(E:\项目\龙穴机\daphne-1.0-src\src\game\singe\Debug\singe.dll) does not match the Linker's OutputFile property value (E:\项目\龙穴机\daphne-1.0-src\src\game\singe\Debug\singed.dll). This may cause your project to build incorrectly. To correct this, please make sure that $(OutDir), $(TargetName) and $(TargetExt) property values match the value specified in %(Link.OutputFile).
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120\Microsoft.CppBuild.targets(1195,5): warning MSB8012: TargetName(singe) does not match the Linker's OutputFile property value (singed). This may cause your project to build incorrectly. To correct this, please make sure that $(OutDir), $(TargetName) and $(TargetExt) property values match the value specified in %(Link.OutputFile).
+     1>Link:
+         singe.vcxproj -> E:\项目\龙穴机\daphne-1.0-src\src\game\singe\Debug\singe.dll
+     1>已完成生成项目“E:\项目\龙穴机\daphne-1.0-src\src\game\singe\singe.vcxproj”(Build 个目标)的操作。
+
+生成成功。
+
+已用时间 00:00:00.07

@@ -1,0 +1,7 @@
+motion_comp_mlib.lo: motion_comp_mlib.c \
+ /home/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/stdc-predef.h \
+ ../include/config.h
+
+/home/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/include/stdc-predef.h:
+
+../include/config.h:
