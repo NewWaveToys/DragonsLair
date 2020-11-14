@@ -5,10 +5,10 @@
 		| sed 's^\($*\)\.o[ :]*^\1.o $@ : ^g' > $@; \
 		[ -s $@ ] || rm -f $@
 
-OBJS = scoreboard_interface.o scoreboard_factory.o scoreboard_collection.o \
-	hw_scoreboard.o img_scoreboard.o null_scoreboard.o \
+OBJS = scoreboard_interface.o \
 	overlay_scoreboard.o
-
+#scoreboard_collection.o \
+	hw_scoreboard.o img_scoreboard.o null_scoreboard.o scoreboard_factory.o 
 .SUFFIXES:	.cpp
 
 all:	${OBJS}

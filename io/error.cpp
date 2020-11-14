@@ -60,6 +60,9 @@ void printerror(const char *s)
 	// FIXME: if bmp hasn't been loaded this might blow up
 	if (get_console_initialized())
 	{
+	#if USE_DRM|LIBRETRO
+	
+			#else
 		SDL_Surface *srfScreen = get_screen_blitter();
 		unsigned int uXOffset = 0;
 
@@ -78,7 +81,7 @@ void printerror(const char *s)
 
 		vid_blit(srfScreen, 0, 0);
 		vid_flip();
-
+#endif
 		// play a 'save me' sound if we've got sound
 		if (get_sound_initialized())
 		{
@@ -113,6 +116,9 @@ void printnowookin(const char *s)
 {
 	if (get_console_initialized())
 	{
+	#if USE_DRM|LIBRETRO
+	
+			#else
 		SDL_Surface *srfScreen = get_screen_blitter();
 
 		vid_blank();
@@ -121,6 +127,7 @@ void printnowookin(const char *s)
 		SDLDrawText(s, srfScreen, FONT_SMALL, ((srfScreen->w >> 1) -((strlen(s) >> 1)*6)), (srfScreen->h >> 1));
 		vid_blit(srfScreen, 0, 0);
 		vid_flip();
+		#endif
 		con_getkey();	// wait for keypress
 
 		// repaint the disrupted overlay (ie Dragon's Lair Scoreboard when using a real LDP)
@@ -134,6 +141,9 @@ void printnotice(const char *s)
 	if (get_console_initialized())
 	{
 		char ch = 0;
+		#if USE_DRM|LIBRETRO
+		
+			#else
 		SDL_Surface *srfScreen = get_screen_blitter();
 
 		SDL_FillRect(srfScreen, NULL, 0);	// draw black background first
@@ -142,7 +152,7 @@ void printnotice(const char *s)
 		vid_blank();	// needed by opengl
 		vid_blit(srfScreen, 0, 0);
 		vid_flip();
-
+#endif
 		ch = con_getkey();	// wait for keypress
 
 		// if they pressed escape, quit

@@ -31,6 +31,7 @@
 
 int sram_load(const char * filename, unsigned char * mem, unsigned int size)
 {
+#if 0
 	string s;
 	gzFile loadfile = NULL;
 	int result = 0;
@@ -66,10 +67,14 @@ int sram_load(const char * filename, unsigned char * mem, unsigned int size)
 	}
 	
 	return result;
+	#else
+	return 0;
+	#endif
 }
 
 int sram_save(const char * filename, unsigned char * mem, unsigned int size)
 {
+#if 0
 	char s[81];
 	gzFile savefile;
 	int result = 0;
@@ -107,4 +112,7 @@ int sram_save(const char * filename, unsigned char * mem, unsigned int size)
 	}
 	
 	return result;
+	#else
+	return 0;
+	#endif
 }

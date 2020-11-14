@@ -43,9 +43,11 @@
 #ifdef USE_OPENGL
 #ifdef MAC_OSX
 #include <glew.h>
+
 #else
 #include <GL/glew.h>
 #endif
+
 
 
 // This is the max width and height that any .BMP will be, so that we can fit it into
@@ -57,6 +59,12 @@
 Uint8 *g_pVidTex = NULL;
 
 #endif
+
+#if USE_DRM
+//#include "drm_display.h"
+//void* framebuff;
+#endif
+
 
 using namespace std;
 
@@ -100,13 +108,29 @@ GLuint g_texture_id = 0;	// for any blits we have to do in opengl ...
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+extern "C"{
+extern void* get_framebuffer();
+extern int get_frame_width();
+extern int get_frame_height();
+extern char is_hdmi();
 
+
+}
 // initializes the window in which we will draw our BMP's
 // returns true if successful, false if failure
 bool init_display()
 {
 
 	bool result = false;	// whether video initialization is successful or not
+	#if USE_DRM|LIBRETRO
+/*
+	if (drm_init(1, 32, 480,272)<0)
+		printf("drm init error \n");
+	framebuffer = getdrmdispbuff();
+	setdrmdisp(getdrmdisp());*/
+	//framebuff = get_framebuffer();
+	return true;
+	#else
 	bool abnormalscreensize = true; // assume abnormal
 	const SDL_VideoInfo *vidinfo = NULL;
 	Uint8 suggested_bpp = 0;
@@ -259,8 +283,8 @@ bool init_display()
 		printerror(s);
 	}
 
-	return(result);
-
+	return (result);
+#endif
 }
 
 #ifdef USE_OPENGL
@@ -302,6 +326,7 @@ bool init_opengl()
 
 		/* Setup our viewport. */
 		glViewport( 0, 0, g_screen->w, g_screen->h );
+#ifndef HAVE_OPENGLES2
 
 		// ENABLE 2D MODE (ORTHO)
 		glMatrixMode (GL_PROJECTION);
@@ -335,7 +360,7 @@ bool init_opengl()
 		{
 			glRotatef(g_fRotateDegrees, 0, 0, 1.0);
 		}
-
+#endif
 		bResult = true;
 	}
 	// else SetVideoMode failed ...
@@ -348,23 +373,31 @@ bool init_opengl()
 void shutdown_display()
 {
 	printline("Shutting down video display...");
+	#if !(USE_DRM|LIBRETRO)
 
 	if (g_console_initialized)
 	{
 		ConsoleShutdown();
 		g_console_initialized = false;
 	}
+	#endif
 
 #ifdef USE_OPENGL
 	// free texture buffer from memory
 	MPO_FREE(g_pVidTex);
 #endif
-
+	#if USE_DRM |LIBRETRO
+	//drm_deinit();
+#else
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
+#endif
 }
 
 void vid_flip()
 {
+	#if USE_DRM|LIBRETRO
+;
+#else
 	// if we're not using OpenGL, then just use the regular SDL Flip ...
 	if (!g_bUseOpenGL)
 	{
@@ -374,10 +407,14 @@ void vid_flip()
 	{
 		SDL_GL_SwapBuffers();
 	}
+	#endif
 }
 
 void vid_blank()
 {
+	#if USE_DRM|LIBRETRO
+
+#else
 	if (!g_bUseOpenGL)
 	{
 		SDL_FillRect(g_screen, NULL, 0);
@@ -388,6 +425,7 @@ void vid_blank()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 #endif
 	}
+	#endif
 }
 
 #ifdef USE_OPENGL
@@ -438,8 +476,9 @@ void vid_srf2tex(SDL_Surface *srf, GLuint uTexID)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	#ifndef HAVE_OPENGLES2
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
+#endif
 	// apply the texture
 	glTexImage2D(GL_TEXTURE_2D,
 		0,	// level is 0
@@ -449,7 +488,13 @@ void vid_srf2tex(SDL_Surface *srf, GLuint uTexID)
 
 }
 #endif
+#if USE_DRM |LIBRETRO
+void vid_blit(void *srf, int x, int y)
+{
+	
+}
 
+#else
 void vid_blit(SDL_Surface *srf, int x, int y)
 {
 	if (g_ldp->is_blitting_allowed())
@@ -482,6 +527,7 @@ void vid_blit(SDL_Surface *srf, int x, int y)
 			// adjust coordinates so they match up with glOrtho projection
 			x -= (g_vid_width >> 1);
 			y -= (g_vid_height >> 1);
+			#ifndef HAVE_OPENGLES2
 
 			glBegin(GL_QUADS);
 			glTexCoord2f(0, 0); glVertex3i(x, y, 0); // top left
@@ -489,12 +535,14 @@ void vid_blit(SDL_Surface *srf, int x, int y)
 			glTexCoord2f(fWidth, fHeight); glVertex3i(x + srf->w, y - srf->h, 0); // bottom right
 			glTexCoord2f(fWidth, 0); glVertex3i(x + srf->w, y, 0); // top right
 			glEnd();
-
+	#endif
 #endif // USE_OPENGL
 		}
 	}
 	// else blitting isn't allowed, so just ignore
+	
 }
+#endif
 
 // redraws the proper display (Scoreboard, etc) on the screen, after first clearing the screen
 // call this every time you want the display to return to normal
@@ -509,7 +557,7 @@ void display_repaint()
 // returns true if they were all successfully loaded, or a false if they weren't
 bool load_bmps()
 {
-
+#if 0
 	bool result = true;	// assume success unless we hear otherwise
 	int index = 0;
 	char filename[81];
@@ -551,11 +599,15 @@ bool load_bmps()
 	}
 
 	return(result);
+	#else
+	return true;
+	#endif
 }
 
 
 SDL_Surface *load_one_bmp(const char *filename)
 {
+#if 0
 	SDL_Surface *result = SDL_LoadBMP(filename);
 
 	if (!result)
@@ -566,6 +618,9 @@ SDL_Surface *load_one_bmp(const char *filename)
 	}
 
 	return(result);
+	#else
+	return NULL;
+	#endif
 }
 
 // Draw's one of our LED's to the screen
@@ -575,13 +630,14 @@ SDL_Surface *load_one_bmp(const char *filename)
 // 1 is returned on success, 0 on failure
 bool draw_led(int value, int x, int y)
 {
-	vid_blit(g_led_bmps[value], x, y);
+	//vid_blit(g_led_bmps[value], x, y);
 	return true;
 }
 
 // Draw overlay digits to the screen
 void draw_overlay_leds(unsigned int values[], int num_digits, int start_x, int y, SDL_Surface *overlay)
 {
+#if 0
 	SDL_Rect src, dest;
 
 	dest.x = start_x;
@@ -604,11 +660,13 @@ void draw_overlay_leds(unsigned int values[], int num_digits, int start_x, int y
     dest.x = start_x;
     dest.w = num_digits * OVERLAY_LED_WIDTH;
     SDL_UpdateRects(overlay, 1, &dest);
+	#endif
 }
 
 // Draw LDP1450 overlay characters to the screen (added by Brad O.)
 void draw_singleline_LDP1450(char *LDP1450_String, int start_x, int y, SDL_Surface *overlay)
 {
+#if 0
 	SDL_Rect src, dest;
 
 	int i = 0;
@@ -662,7 +720,7 @@ void draw_singleline_LDP1450(char *LDP1450_String, int start_x, int y, SDL_Surfa
 	}
 	dest.x = start_x;
 	dest.w = LDP1450_strlen * OVERLAY_LDP1450_CHARACTER_SPACING;
-
+#endif
 	// MPO : calling UpdateRects probably isn't necessary and may be harmful
 	//SDL_UpdateRects(overlay, 1, &dest);
 }
@@ -671,6 +729,7 @@ void draw_singleline_LDP1450(char *LDP1450_String, int start_x, int y, SDL_Surfa
 //  'which' corresponds to enumerated values
 bool draw_othergfx(int which, int x, int y, bool bSendToScreenBlitter)
 {
+#if 0
 	// NOTE : this is drawn to g_screen_blitter, not to g_screen,
 	//  to be more friendly to our opengl implementation!
 	SDL_Surface *srf = g_other_bmps[which];
@@ -690,13 +749,14 @@ bool draw_othergfx(int which, int x, int y, bool bSendToScreenBlitter)
 	{
 		vid_blit(g_other_bmps[which], x, y);
 	}
+	#endif
 	return true;
 }
 
 // de-allocates all of the .bmps that we have allocated
 void free_bmps()
 {
-
+#if 0
 	int nuke_index = 0;
 
 	// get rid of all the LED's
@@ -712,17 +772,23 @@ void free_bmps()
 			free_one_bmp(g_other_bmps[nuke_index]);
 		}
 	}
+	#endif
 }
 
 void free_one_bmp(SDL_Surface *candidate)
 {
-
+printf("%s %x \n",__FUNCTION__,candidate);
 	SDL_FreeSurface(candidate);
 
 }
-
+#if LIBRETRO
 //////////////////////////////////////////////////////////////////////////////////////////
-
+#elif USE_DRM
+void *get_screen(){return get_framebuffer();}
+int get_screen_w(){return get_frame_width();}
+int get_screen_h(){return get_frame_height();}
+char check_hdmi(){return  is_hdmi();}
+#else
 SDL_Surface *get_screen()
 {
 	return g_screen;
@@ -732,7 +798,7 @@ SDL_Surface *get_screen_blitter()
 {
 	return g_screen_blitter;
 }
-
+#endif
 int get_console_initialized()
 {
 	return g_console_initialized;
@@ -793,6 +859,7 @@ void set_video_height(Uint16 height)
 // ASSUMES OVERLAY IS ALREADY LOCKED!!!
 void take_screenshot(SDL_Overlay *yuvimage)
 {
+#if 0
 	SDL_Color cur_color = { 0 };
 	bool bSaveYUV = false;
 
@@ -952,6 +1019,7 @@ void take_screenshot(SDL_Overlay *yuvimage)
 			mpo_close(io);
 		}
 	}
+	#endif
 }
 
 #ifdef USE_OPENGL
@@ -1001,6 +1069,7 @@ void take_screenshot_GL()
 // saves an SDL surface to a .BMP file in the screenshots directory
 void save_screenshot(SDL_Surface *shot)
 {
+#if 0
 	int screenshot_num = 0;
 	char filename[81] = { 0 };
 
@@ -1027,6 +1096,7 @@ void save_screenshot(SDL_Surface *shot)
 		outstr("ERROR: Could not write screenshot to file ");
 		printline(filename);
 	}
+	#endif
 }
 
 // converts YUV to RGB
@@ -1058,6 +1128,7 @@ void yuv2rgb(SDL_Color *result, int y, int u, int v)
 
 void draw_string(const char* t, int col, int row, SDL_Surface* overlay)
 {
+#if !(USE_DRM|LIBRETRO)
 	SDL_Rect dest;
 
 	dest.x = (short) ((col*6));
@@ -1068,6 +1139,7 @@ void draw_string(const char* t, int col, int row, SDL_Surface* overlay)
 	SDL_FillRect(overlay, &dest, 0); // erase anything at our destination before we print new text
 	SDLDrawText(t,  overlay, FONT_SMALL, dest.x, dest.y);
 	SDL_UpdateRects(overlay, 1, &dest);	
+	#endif
 }
 
 // toggles fullscreen mode
@@ -1086,6 +1158,7 @@ void vid_toggle_fullscreen()
 // NOTE : put into a separate function to make autotesting easier
 void set_yuv_hwaccel(bool enabled)
 {
+#if 0
 	const char *val = "0";
 	if (enabled) val = "1";
 #ifdef WIN32
@@ -1095,6 +1168,7 @@ void set_yuv_hwaccel(bool enabled)
 	putenv(sEnv.c_str());
 #else
 	setenv("SDL_VIDEO_YUV_HWACCEL", val, 1);
+#endif
 #endif
 }
 

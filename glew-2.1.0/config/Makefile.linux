@@ -1,0 +1,37 @@
+NAME = $(GLEW_NAME)
+CC =  /home/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/bin/arm-buildroot-linux-gnueabihf-gcc
+LD = /home/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/bin/arm-buildroot-linux-gnueabihf-ld
+M_ARCH ?= $(shell uname -m)
+ARCH64 = false
+ifeq (x86_64,${M_ARCH})
+  ARCH64 = true
+endif
+ifeq (ppc64,${M_ARCH})
+  ARCH64 = true
+endif
+ifeq (${ARCH64},true)
+  LDFLAGS.EXTRA = -L/home/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/arm-buildroot-linux-gnueabihf/sysroot/usr/lib
+  #-L/usr/X11R6/lib64 -L/usr/lib64
+  LIBDIR = $(GLEW_DEST)/lib64
+else
+  LDFLAGS.EXTRA = -L/usr/X11R6/lib -L/usr/lib
+  LIBDIR = $(GLEW_DEST)/lib
+endif
+LDFLAGS.GL = -lEGL -lGLESv2 
+#-lGL -lX11
+LDFLAGS.STATIC = -Wl,-Bstatic
+LDFLAGS.DYNAMIC = -Wl,-Bdynamic
+NAME = GLEW
+WARN = -Wall -W
+POPT = -O2
+CFLAGS.EXTRA += -fPIC -DGLEW_EGL  -DMESA_EGL_NO_X11_HEADERS -mfpu=neon -marm -mfloat-abi=hard -mfpu=neon -marm -mfloat-abi=hard
+CFLAGS.EXTRA += -Wcast-qual
+CFLAGS.EXTRA += -ansi -pedantic
+CFLAGS.EXTRA += -fno-stack-protector
+BIN.SUFFIX =
+LIB.SONAME = lib$(NAME).so.$(SO_MAJOR)
+LIB.DEVLNK = lib$(NAME).so
+LIB.SHARED = lib$(NAME).so.$(SO_VERSION)
+LIB.STATIC = lib$(NAME).a
+LDFLAGS.SO = -shared 
+#-Wl,-soname=$(LIB.SONAME)

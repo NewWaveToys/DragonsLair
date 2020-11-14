@@ -37,6 +37,16 @@
 #include "mpo_fileio.h"
 #include "homedir.h"
 
+#define DISLOG
+
+#ifdef DISLOG
+void printline(const char *s){}
+void outstr(const char *s){}
+void newline(){}
+void outchr(const char ch){}
+void addlog(const char *s){}
+
+#else
 using namespace std;
 
 char G_curline[CHARS_PER_LINE] = { 0 };	// current line of output
@@ -53,7 +63,6 @@ list <string> g_lsPendingLog;
 // Returns 1 on success, 0 on failure
 void outstr(const char *s)
 {
-#if 1
 // the console consumes quite a bit of cpu, so we don't want to have
 //  it enabled by default
 #ifdef CPU_DEBUG
@@ -70,7 +79,6 @@ void outstr(const char *s)
 #endif
 
 	addlog(s); // add to our logfile
-#endif
 }
 
 // Prints a single character to the screen
@@ -95,7 +103,7 @@ void outchr(const char ch)
 void printline(const char *s)
 {
 	outstr(s);
-	newline();
+	//newline();
 }
 
 // moves to the next line without printing anything
@@ -143,6 +151,57 @@ void noflood_printline(char *s)
 	}
 }
 
+
+void set_log_enabled(bool val)
+{
+	g_log_enabled = val;
+}
+
+// adds a string to a log file (creates the logfile if it does not exist)
+void addlog(const char *s)
+{
+	printf("= %s \n", s);
+	// if logging is enabled
+	if (g_log_enabled)
+	{
+		mpo_io *io = NULL;
+		string logname = g_homedir.get_homedir();
+		logname += "/";
+		logname += LOGNAME;
+
+		io = mpo_open(logname.c_str(), MPO_OPEN_APPEND);
+		if (io)
+		{
+			// if our list has stuff in it waiting to be written out to disk, then do so now
+			if (!g_lsPendingLog.empty())
+			{
+				// empty the log of its contents
+				for (list<string>::iterator i = g_lsPendingLog.begin();
+					i != g_lsPendingLog.end(); i++)
+				{
+					mpo_write((*i).c_str(), (*i).size(), NULL, io);
+				}
+				g_lsPendingLog.clear();
+			}
+			mpo_write(s, strlen(s), NULL, io);
+			mpo_close(io);
+		}
+		// else directory is read-only so we will just ignore for now
+		else
+		{
+#ifdef UNIX
+				printf("Cannot write to '%s', do you have write permissions?\n", logname.c_str());
+#endif
+		}
+	}
+	// else logging is disabled, so we have to store log entries to memory
+	else
+	{
+		g_lsPendingLog.push_back(s);	// store to RAM for now ...
+	}
+}
+#endif
+
 // This is a safe version of ITOA in that prevents buffer overflow, but if your buffer size is too small,
 // you will get an incorrect result.
 void safe_itoa(int num, char *a, int sizeof_a)
@@ -183,53 +242,3 @@ void safe_itoa(int num, char *a, int sizeof_a)
 	}	
 }
 
-void set_log_enabled(bool val)
-{
-	g_log_enabled = val;
-}
-
-// adds a string to a log file (creates the logfile if it does not exist)
-void addlog(const char *s)
-{
-#if 1
-	printf("= %s \n", s);
-	// if logging is enabled
-	if (g_log_enabled)
-	{
-		mpo_io *io = NULL;
-		string logname = g_homedir.get_homedir();
-		logname += "/";
-		logname += LOGNAME;
-
-		io = mpo_open(logname.c_str(), MPO_OPEN_APPEND);
-		if (io)
-		{
-			// if our list has stuff in it waiting to be written out to disk, then do so now
-			if (!g_lsPendingLog.empty())
-			{
-				// empty the log of its contents
-				for (list<string>::iterator i = g_lsPendingLog.begin();
-					i != g_lsPendingLog.end(); i++)
-				{
-					mpo_write((*i).c_str(), (*i).size(), NULL, io);
-				}
-				g_lsPendingLog.clear();
-			}
-			mpo_write(s, strlen(s), NULL, io);
-			mpo_close(io);
-		}
-		// else directory is read-only so we will just ignore for now
-		else
-		{
-#ifdef UNIX
-				printf("Cannot write to '%s', do you have write permissions?\n", logname.c_str());
-#endif
-		}
-	}
-	// else logging is disabled, so we have to store log entries to memory
-	else
-	{
-		g_lsPendingLog.push_back(s);	// store to RAM for now ...
-	}
-#endif
-}

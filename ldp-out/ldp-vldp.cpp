@@ -143,7 +143,49 @@ ldp_vldp::~ldp_vldp()
 	pre_shutdown();
 	memset(&g_local_info, 0, sizeof(g_local_info));
 }
+#if LIBRETRO|USE_DRM
+void* tmp_frame;
+static int cov_inited=0;
+#endif
+#if USE_DRM
 
+
+long* m_video_scale_matrix;
+
+void init_scale()
+{
+	int w;
+		int h;
+		int x;
+		int y;
+		float dx;
+		float dy;
+		float srcx;
+		float srcy;
+		int m_video_overlay_width = 640;
+		tmp_frame = malloc(640*480*4);
+		
+		w = 364;//get_screen_w();
+		h = 272;//get_screen_h();
+		m_video_scale_matrix =(long*) malloc(sizeof(long)*w*h);
+		
+
+	 dx=(float)m_video_overlay_width/(float)w;	// 256/640=0.4
+     dy=(float)480/(float)h;	// 256/480=0.5333
+
+                srcx=0;
+                srcy=0;
+
+                for (y=0; y<h; y++) {
+                    srcx=0;
+                    for (x=0; x<w; x++) {
+                        m_video_scale_matrix[x+(y*w)]=(long)srcx+((long)srcy*m_video_overlay_width);
+                        srcx+=dx;
+                    } /*endfor*/
+                    srcy+=dy;
+                } /*endfor*/
+}
+#endif
 // called when daphne starts up
 bool ldp_vldp::init_player()
 {
@@ -151,10 +193,19 @@ bool ldp_vldp::init_player()
 	bool need_to_parse = false;	// whether we need to parse all video
 
 	g_vertical_stretch = m_vertical_stretch;  // callbacks don't have access to m_vertical_stretch
-	
+	printf("%s line %d \n",__FUNCTION__,__LINE__);
 	// load the .DLL first in case we call any of its functions elsewhere
+	#if LIBRETRO
+	tmp_frame = malloc(get_video_width()*get_video_height()*4);
+	memset(tmp_frame,0,get_video_width()*get_video_height()*4);
+	#elif USE_DRM
+	
+	init_scale();
+	
+	#endif
+	
 	if (load_vldp_lib())
-	{
+	{printf("%s line %d \n",__FUNCTION__,__LINE__);
 		// try to read in the framefile
 		if (read_frame_conversions())
 		{
@@ -174,14 +225,16 @@ bool ldp_vldp::init_player()
 					// if our game is using video overlay,
 					// AND if we're not doing tests that an overlay would interfere with
 					// we'll use our slower callback
+					#if !(USE_DRM|LIBRETRO)
 					if (g_game->get_active_video_overlay() && !m_testing)
-					{
+					{printf("%s line %d \n",__FUNCTION__,__LINE__);
 						g_local_info.prepare_frame = prepare_frame_callback_with_overlay;
 					}
 					
 					// otherwise we can draw the frame much faster w/o worrying about
 					// video overlay
 					else
+						#endif
 					{
 						g_local_info.prepare_frame = prepare_frame_callback_without_overlay;
 					}
@@ -214,7 +267,7 @@ bool ldp_vldp::init_player()
 					}
 #endif
 					g_vldp_info = pvldp_init(&g_local_info);
-					
+					printf("%s line %d \n",__FUNCTION__,__LINE__);
 					// if we successfully made contact with VLDP ...
 					if (g_vldp_info != NULL)
 					{
@@ -338,6 +391,7 @@ bool ldp_vldp::init_player()
 	{
 		shutdown_player();
 	}
+	printf("%s line %d \n",__FUNCTION__,__LINE__);
 
 	return result;
 }
@@ -350,7 +404,7 @@ void ldp_vldp::shutdown_player()
 		g_vldp_info->shutdown();
 		g_vldp_info = NULL;
 	}
-	
+	printf("%s %d \n", __FUNCTION__,__LINE__);
 	if (is_sound_enabled())
 	{
 		if (!delete_soundchip(m_uSoundChipID))
@@ -359,9 +413,18 @@ void ldp_vldp::shutdown_player()
 		}
 	}
 	free_vldp_lib();
-	audio_shutdown();
+	audio_shutdown();//printf("%s %d \n", __FUNCTION__,__LINE__);
 	free_yuv_overlay();	// de-allocate overlay if we have one allocated ...
+	#if USE_DRM|LIBRETRO
+	if(tmp_frame)free(tmp_frame);
+	tmp_frame=NULL;
+	#if USE_DRM
+		if(m_video_scale_matrix)free(m_video_scale_matrix);
+		m_video_scale_matrix =NULL;
+			#endif
+		cov_inited = 0;
 	
+	#endif
 #ifdef USE_OPENGL
 	free_gl_resources();
 #endif
@@ -429,7 +492,11 @@ bool ldp_vldp::wait_for_status(unsigned int uStatus)
 			// redraw screen blitter before we display it
 			update_parse_meter();
 			vid_blank();
+			#if USE_DRM|LIBRETRO
+			//vid_blit(NULL, 0, 0);
+			#else
 			vid_blit(get_screen_blitter(), 0, 0);
+			#endif
 			vid_flip();
 			g_bGotParseUpdate = false;
 		}
@@ -628,6 +695,7 @@ unsigned int ldp_vldp::play()
 			{			
 				// try to open an optional audio file to go along with video
 				oggize_path(ogg_path, m_mpeginfo[0].name);
+				printf("%s %d ogg_path %s \n", __FUNCTION__,__LINE__, ogg_path.c_str());
 				m_audio_file_opened = open_audio_stream(ogg_path.c_str());
 			}
 			
@@ -888,6 +956,7 @@ void ldp_vldp::request_screenshot()
 void ldp_vldp::set_search_blanking(bool enabled)
 {
 	m_blank_on_searches = enabled;
+	g_local_info.blank_during_searches = enabled;
 }
 
 void ldp_vldp::set_skip_blanking(bool enabled)
@@ -1419,8 +1488,8 @@ bool ldp_vldp::precache_all_video()
 	{
 		const unsigned int uFUDGE = 256;	// how many megs we assume the OS needs in addition to our application running
 		unsigned int uReqMegs = (unsigned int) ((u64TotalBytes / 1048576) + uFUDGE);
-		unsigned int uMegs = get_sys_mem();
-
+		unsigned int uMegs = 256*1024*1024;//get_sys_mem();
+printf("%s uReqMegs %u = uMegs %u \n", __FUNCTION__, uReqMegs, uMegs);
 		// if we have enough memory (accounting for OS overhead, which may need to increase in the future)
 		//  OR if the user wants to force precaching despite our check ...
 		if ((uReqMegs < uMegs) || (m_bPreCacheForce))
@@ -1697,7 +1766,173 @@ bool ldp_vldp::parse_framefile(const char *pszInBuf, const char *pszFramefileFul
 
 
 //////////////////////////////////////////////////////////////////////
+#if USE_DRM|LIBRETRO
+#define CONVERT_RGB 0
 
+#define CONVERT_BGR 1
+
+static uint32_t matrix_coefficients = 6;
+
+const int32_t Inverse_Table_6_9[8][4] = {
+    {117504, 138453, 13954, 34903}, /* no sequence_display_extension */
+    {117504, 138453, 13954, 34903}, /* ITU-R Rec. 709 (1990) */
+    {104597, 132201, 25675, 53279}, /* unspecified */
+    {104597, 132201, 25675, 53279}, /* reserved */
+    {104448, 132798, 24759, 53109}, /* FCC */
+    {104597, 132201, 25675, 53279}, /* ITU-R Rec. 624-4 System B, G */
+    {104597, 132201, 25675, 53279}, /* SMPTE 170M */
+    {117579, 136230, 16907, 35559}  /* SMPTE 240M (1987) */
+};
+
+void * table_rV[256];
+void * table_gU[256];
+int table_gV[256];
+void * table_bU[256];
+
+#define RGB(type,i)						\
+	U = pu[i];						\
+	V = pv[i];						\
+	r = (type *) table_rV[V];				\
+	g = (type *) (((uint8_t *)table_gU[U]) + table_gV[V]);	\
+	b = (type *) table_bU[U];
+
+#define DST(py,dst,i)				\
+	Y = py[2*i];				\
+	dst[2*i] = r[Y] | g[Y] | b[Y];		\
+	Y = py[2*i+1];				\
+	dst[2*i+1] = r[Y] | g[Y] | b[Y];
+//	Y1 = py[2*i+1]; \
+	dst[i] =  r[Y] | g[Y] | b[Y];		\
+
+//
+
+#define DSTRGB(py,dst,i)						\
+	Y = py[2*i];							\
+	dst[6*i] = r[Y]; dst[6*i+1] = g[Y]; dst[6*i+2] = b[Y];		\
+	Y = py[2*i+1];							\
+	dst[6*i+3] = r[Y]; dst[6*i+4] = g[Y]; dst[6*i+5] = b[Y];
+
+#define DSTBGR(py,dst,i)						\
+	Y = py[2*i];							\
+	dst[6*i] = b[Y]; dst[6*i+1] = g[Y]; dst[6*i+2] = r[Y];		\
+	Y = py[2*i+1];							\
+	dst[6*i+3] = b[Y]; dst[6*i+4] = g[Y]; dst[6*i+5] = r[Y];
+
+static void yuv2rgb_c_32 (uint8_t * py_1, uint8_t * py_2,
+			  uint8_t * pu, uint8_t * pv,
+			  void * _dst_1, void * _dst_2, int width)
+{
+    int U, V, Y,Y1;
+    uint32_t * r, * g, * b;
+    uint32_t * dst_1, * dst_2;
+
+    width >>= 3;
+    dst_1 = (uint32_t *) _dst_1;
+    dst_2 = (uint32_t *) _dst_2;
+	
+
+    do {
+	RGB (uint32_t, 0);
+	DST (py_1, dst_1, 0);
+	DST (py_2, dst_2, 0);
+
+	RGB (uint32_t, 1);
+	DST (py_2, dst_2, 1);
+	DST (py_1, dst_1, 1);
+
+	RGB (uint32_t, 2);
+	DST (py_1, dst_1, 2);
+	DST (py_2, dst_2, 2);
+
+	RGB (uint32_t, 3);
+	DST (py_2, dst_2, 3);
+	DST (py_1, dst_1, 3);
+
+	pu += 4;
+	pv += 4;
+	py_1 += 8;
+	py_2 += 8;
+	dst_1 += 8;
+	dst_2 += 8;
+    } while (--width);
+}
+static int div_round (int dividend, int divisor)
+{
+    if (dividend > 0)
+	return (dividend + (divisor>>1)) / divisor;
+    else
+	return -((-dividend + (divisor>>1)) / divisor);
+}
+
+static  void yuv2rgb_c_init (int order, int bpp)
+{
+    int i;
+    uint8_t table_Y[1024];
+    uint32_t * table_32 = 0;
+    uint16_t * table_16 = 0;
+    uint8_t * table_8 = 0;
+    int entry_size = 0;
+    void * table_r = 0;
+    void * table_g = 0;
+    void * table_b = 0;
+
+    int crv = Inverse_Table_6_9[matrix_coefficients][0];
+    int cbu = Inverse_Table_6_9[matrix_coefficients][1];
+    int cgu = -Inverse_Table_6_9[matrix_coefficients][2];
+    int cgv = -Inverse_Table_6_9[matrix_coefficients][3];
+
+	cov_inited =1;
+
+    for (i = 0; i < 1024; i++) {
+	int j;
+
+	j = (76309 * (i - 384 - 16) + 32768) >> 16;
+	j = (j < 0) ? 0 : ((j > 255) ? 255 : j);
+	table_Y[i] = j;
+    }
+
+    switch (bpp) {
+    case 32:
+
+	table_32 = (uint32_t *) malloc ((197 + 2*682 + 256 + 132) *
+					sizeof (uint32_t));
+
+	entry_size = sizeof (uint32_t);
+	table_r = table_32 + 197;
+	table_b = table_32 + 197 + 685;
+	table_g = table_32 + 197 + 2*682;
+
+	for (i = -197; i < 256+197; i++)
+	    ((uint32_t *) table_r)[i] =
+		table_Y[i+384] << ((order == CONVERT_RGB) ? 16 : 0);
+	for (i = -132; i < 256+132; i++)
+	    ((uint32_t *) table_g)[i] = table_Y[i+384] << 8;
+	for (i = -232; i < 256+232; i++)
+	    ((uint32_t *) table_b)[i] =
+		table_Y[i+384] << ((order == CONVERT_RGB) ? 0 : 16);
+	break;
+
+
+    default:
+	fprintf (stderr, "%ibpp not supported by yuv2rgb\n", bpp);
+	exit (1);
+    }
+
+    for (i = 0; i < 256; i++) {
+	table_rV[i] = (((uint8_t *)table_r) +
+		       entry_size * div_round (crv * (i-128), 76309));
+	table_gU[i] = (((uint8_t *)table_g) +
+		       entry_size * div_round (cgu * (i-128), 76309));
+	table_gV[i] = entry_size * div_round (cgv * (i-128), 76309);
+	table_bU[i] = (((uint8_t *)table_b) +
+		       entry_size * div_round (cbu * (i-128), 76309));
+    }
+if(table_32)free(table_32);
+	table_32=NULL;
+}
+int draw_black=0;
+
+#endif
 // returns VLDP_TRUE on success, VLDP_FALSE on failure
 int prepare_frame_callback_with_overlay(struct yuv_buf *src)
 {
@@ -1718,7 +1953,46 @@ int prepare_frame_callback_with_overlay(struct yuv_buf *src)
 		mutex_lock_acknowledge = 0;
 	}
 	*/
+	//printf("%s ==%d \n",__FUNCTION__,__LINE__);
+	#if LIBRETRO
+	return VLDP_FALSE;
+	#elif USE_DRM 
+	void* target = get_screen();
+	if(!cov_inited)yuv2rgb_c_init(CONVERT_RGB, 32);
+	//printf("%s ==%d get_video_width() %d \n",__FUNCTION__,__LINE__, get_video_width());
+	#if 0
+	memcpy(target, src->Y, src->Y_size);
+	memcpy(target+src->Y_size, src->U, src->UV_size);
+	memcpy(target+(src->Y_size+src->UV_size), src->V, src->UV_size);
+	#endif
+	#if 1
+	uint8_t * dst;
+    uint8_t * py;
+    uint8_t * pu;
+    uint8_t * pv;
+	int xoffset = 58<<2;
+    int loop;
+	int width = get_screen_w();
+	int height = get_screen_h();
 	
+
+    dst = (uint8_t*)target;
+    py = src->Y; pu = src->U; pv = src->V;
+	int uv_stride = get_video_width()>> 1;
+	int rgb_stride = ((32 + 7) >> 3) * width;
+
+    loop = height>>1;
+    do {
+	yuv2rgb_c_32 (py, py + (uv_stride << 1), pu, pv,
+		     dst+xoffset, dst+xoffset + rgb_stride, width-116);
+	py += uv_stride << 2;
+	pu += uv_stride;
+	pv += uv_stride;
+	dst += 2 * rgb_stride;
+    } while (--loop);
+   #endif
+	result = VLDP_TRUE;
+#else
 	if (SDL_LockYUVOverlay(g_hw_overlay) == 0)
 	{
 		SDL_Surface *gamevid = g_game->get_finished_video_overlay();	// This could change at any time (double buffering, for example)
@@ -1913,7 +2187,7 @@ int prepare_frame_callback_with_overlay(struct yuv_buf *src)
 		
 		SDL_UnlockYUVOverlay(g_hw_overlay);
 	} // end if locking the overlay was successful
-	
+	#endif
 	// else we are trying to feed info to the overlay too quickly, so we'll just have to wait
 	
 	return result;
@@ -1924,7 +2198,9 @@ int prepare_frame_callback_with_overlay(struct yuv_buf *src)
 int prepare_frame_callback_without_overlay(struct yuv_buf *buf)
 {
 	int result = VLDP_FALSE;
-	
+	#if USE_DRM|LIBRETRO
+	return VLDP_TRUE;
+#else
 	// if locking the video overlay is successful
 	if (SDL_LockYUVOverlay(g_hw_overlay) == 0)
 	{
@@ -1941,17 +2217,99 @@ int prepare_frame_callback_without_overlay(struct yuv_buf *buf)
 		
 		result = VLDP_TRUE;
 	}
-	
+
 	// else just ignore
 	
 	return result;
+		#endif
 }
+extern void game_thread_lock();
+extern void flush_video(void *buf, int w, int h);
+extern char need_retset;
+extern int skipframes;
+
 
 // displays the frame as fast as possible
 void display_frame_callback(struct yuv_buf *buf)
 {
-	SDL_DisplayYUVOverlay(g_hw_overlay, g_screen_clip_rect);
+#if USE_DRM|LIBRETRO
+	
+#if LIBRETRO
+void* target = tmp_frame;
+	int width = get_video_width();
+	int height = get_video_height();
+#else
+	void* target = get_screen();
+	int width = get_screen_w();
+	int height = get_screen_h();
+	#endif
+	if(draw_black>0||need_retset||skipframes>0)
+	{
+		memset(target,0,width*height*4);
+		draw_black--;
+		skipframes--;
+		return ;
+	}
+	if(!cov_inited)yuv2rgb_c_init(CONVERT_RGB, 32);
+	uint8_t * dst;
+    uint8_t * py;
+    uint8_t * pu;
+    uint8_t * pv;
+	
+    int loop;
+	
+	int uv_stride = get_video_width()>> 1;
+	int rgb_stride = ((32 + 7) >> 3) * get_video_width();//width;
+	loop = get_video_height()>>1;//height>>1;
+	int xoffset = 58;//<<2;
 
+    dst = (uint8_t*)tmp_frame;//target;
+    py = buf->Y; pu = buf->U; pv = buf->V;
+	
+    
+    do {
+	yuv2rgb_c_32 (py, py + (uv_stride << 1), pu, pv,
+		     dst/*+xoffset*/, dst/*+xoffset*/ + rgb_stride, uv_stride<<1);//width-42);
+	py += uv_stride << 2;
+	pu += uv_stride;
+	pv += uv_stride;
+	dst += 2 * rgb_stride;
+    } while (--loop);
+	#if LIBRETRO
+	//game_thread_lock();
+	flush_video(tmp_frame,width,height);
+	#endif
+	#if USE_DRM
+	long i,j;
+	
+	unsigned int * srcpixmap=(unsigned int*)tmp_frame;
+	unsigned int* dstpixmap=(unsigned int*)target;
+	if(check_hdmi())
+	{	
+		xoffset = (width-640)>>1;
+		for (i=0; i<height; i++) {
+			memcpy(dstpixmap+xoffset,srcpixmap,2560);
+			srcpixmap+=640;
+			dstpixmap += width;
+			
+		} 
+	}else{
+	int w=364;
+	for (i=0; i<height; i++) {
+		for(j=0;j<w;j++)
+		{
+		dstpixmap[i*width+j+xoffset] = srcpixmap[m_video_scale_matrix[i*w+j]];
+		}
+	} /*endfor*/
+	
+}
+	#endif
+	
+	return ;
+
+#else
+	SDL_DisplayYUVOverlay(g_hw_overlay, g_screen_clip_rect);
+#endif
 #if 0
 	{
 		static unsigned int uOldTime = 0;
@@ -2075,6 +2433,7 @@ bool g_parsed = false;	// whether we've received any data at all ...
 // this should be called from parent thread
 void update_parse_meter()
 {
+	#if !(USE_DRM|LIBRETRO)
 	// if we have some data collected
 	if (g_dPercentComplete01 >= 0)
 	{
@@ -2091,7 +2450,7 @@ void update_parse_meter()
 
 		// as long as percent_complete is always 100 or lower, total_s will always be >= elapsed_s, so no checking necessary here
 		remaining_s = total_s - elapsed_s;
-
+		
 		SDL_Surface *screen = get_screen_blitter();	// the main screen that we can draw on ...
 		SDL_FillRect(screen, NULL, 0);	// erase previous stuff on the screen blitter
 
@@ -2128,7 +2487,9 @@ void update_parse_meter()
 				(Uint8) (255 * g_dPercentComplete01),
 				0));
 		}
+		
 	}
+	#endif
 }
 
 // percent_complete is between 0 and 1
@@ -2156,6 +2517,8 @@ extern unsigned int g_draw_width, g_draw_height;
 // this always gets called before the draw_callback and always after report_parse_progress callback
 void report_mpeg_dimensions_callback(int width, int height)
 {
+	#if USE_DRM|LIBRETRO
+#else
 	unsigned int uTimer = refresh_ms_time();
 
 	// if we haven't blitted this information to the screen, then wait for other thread to do so before we continue ...
@@ -2255,11 +2618,13 @@ void report_mpeg_dimensions_callback(int width, int height)
 		assert(((g_blend_iterations % 8) == 0) && (g_blend_iterations >= 8));	// blend MMX does 8 bytes at a time
 #endif
 	}
-	
+	#endif
 }
 
 void free_yuv_overlay()
 {
+	#if !(USE_DRM|LIBRETRO)
+
 	if (g_hw_overlay)
 	{
 		SDL_FreeYUVOverlay(g_hw_overlay);
@@ -2275,15 +2640,20 @@ void free_yuv_overlay()
 	MPO_FREE(g_blank_yuv_buf.Y);
 	MPO_FREE(g_blank_yuv_buf.U);
 	MPO_FREE(g_blank_yuv_buf.V);
+	#endif
 }
 
 // makes the laserdisc video black while drawing game's video overlay on top
 void blank_overlay()
 {
+#if USE_DRM|LIBRETRO
+	draw_black = 5;
+#else
 	// only do this if the HW overlay has already been allocated
 	if (g_hw_overlay)
 	{
 		g_local_info.prepare_frame(&g_blank_yuv_buf);
 		g_local_info.display_frame(&g_blank_yuv_buf);
 	}
+	#endif
 }

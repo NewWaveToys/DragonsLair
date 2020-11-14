@@ -5,7 +5,7 @@
 
 #ifdef MAC_OSX
 #include <glew.h>
-#else
+#else 
 #include <GL/glew.h>
 #endif
 

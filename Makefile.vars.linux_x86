@@ -1,5 +1,7 @@
 # This file contains linux-specific environment variables
 # It is included by Makefile if a symlink is created to point to it
+#CC = /home/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/bin/arm-buildroot-linux-gnueabihf-gcc
+#CXX = /home/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/bin/arm-buildroot-linux-gnueabihf-g++
 
 export CXX=/home/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/bin/arm-buildroot-linux-gnueabihf-g++
 export CC=/home/luwenjiang/3128linux/buildroot/output/rockchip_rk3128_game/host/bin/arm-buildroot-linux-gnueabihf-gcc

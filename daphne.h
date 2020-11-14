@@ -35,10 +35,16 @@ const char *get_daphne_version();
 
 unsigned char get_filename(char *s, unsigned char n);
 void set_quitflag();
+// RJS ADD
+void set_quitflag(int);
 unsigned char get_quitflag();
 bool change_dir(const char *pszNewDir);
 void set_cur_dir(const char *exe_loc);
-int main(int, char **);
+// RJS CHANGE
+// int main(int, char **);
+int main_daphne(int, char **);
+int main_daphne_mainloop();
+int main_daphne_shutdown();
 void set_unix_signals();
 void handle_unix_signals(int);
 void set_serial_port(unsigned char i);

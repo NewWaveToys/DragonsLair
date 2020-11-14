@@ -182,7 +182,7 @@ void retro_set_input_state(retro_input_state_t in_inputstate)
 /**************************************************************************************************
 * Basic init.  Called only once.
 **************************************************************************************************/
-
+extern void daphne_retro_init();
 void retro_init(void)
 {
 	// Set the internal pixel format.
@@ -239,7 +239,7 @@ printf("retro init \n");
 	// Call Daphne startup code.
 	 
 }
-
+FILE*sfp;
 
 /**************************************************************************************************
 * Core tear down.  Essentially de-retro_init.  Called only once.
@@ -248,10 +248,10 @@ void retro_deinit(void)
 {
 	if (log_cb)
       log_cb(RETRO_LOG_INFO, "daphne-libretro: In retro_deinit.\n");
-
+	if(sfp)fclose(sfp);sfp=NULL;
 
 	set_quitflag();
-
+	main_daphne_shutdown();
 }
 
 
@@ -336,7 +336,12 @@ void retro_reset(void)
 {printf("retro_reset \n");
    need_retset =1;
 
-  
+   if (g_game)
+  {
+  extern  void preset_param();
+  preset_param();
+  g_game->reset();
+   	}
 
 	// Clear the rom paths.
 	gstr_rom_extension[0]	= '\0';
@@ -370,7 +375,7 @@ bool retro_has_inputstate_changed(int in_port, int in_button, uint16_t in_key)
 * Runs the game for one video frame.
 **************************************************************************************************/
 //extern SDL_SW_YUVTexture * get_vb_waiting(int * vb_ndx);
-
+extern bool input_pause(bool fPaused);
 extern void set_vb_rendering_done(int vb_ndx);
 //extern void game_thread_unlock();
 //extern void game_thread_lock();
@@ -379,7 +384,7 @@ extern int retro_run_frames_delta;
 int retro_run_frames	= 0;
 
 bool retro_run_once = false;
-
+extern void* tmp_frame;
 int game_ispause=0;
 int game_isresume=0;
 int skipcount = 0;
@@ -426,7 +431,7 @@ int send_sound(void *p)
 	#endif
 	if (audio_batch_cb)
 		audio_batch_cb(ab_buffer, A_frames>>2);
-	
+	//if(sfp)fwrite(ab_buffer,1,A_frames, sfp);
 	SDL_Delay(16);
 	return 0;
 }
@@ -444,6 +449,8 @@ void update_sound(unsigned short *buf, int frames)
 	if(get_quitflag())
 		return ;
 	
+	if(game_ispause !=g_cpu_paused)
+			input_pause(game_ispause);
 	
 	if(g_cpu_paused||need_retset||(game_ispause/*&&g_ldp->get_status()==LDP_PAUSED*/))
 		{
@@ -468,15 +475,52 @@ void update_sound(unsigned short *buf, int frames)
 
 void retro_run(void)
 {
+#if 0
+	if (retro_run_frames_delta >= RETRO_RUN_FRAMES_PAUSED_THRESHOLD)
+	{
+		retro_run_frames_delta = 0;
+		input_pause(false);
+	}
+	retro_run_frames++;
+#endif
 
-
-	
-
+	#if 1
+	   if (!g_game)
+	   {
+	//   game_ispause = 1;
+	  	 main_daphne(0/*num_args, pstr_args*/,NULL);
+		 printf("retro load \n");
+		  for (int n_button_ndx = 0; n_button_ndx < RETRO_MAX_BUTTONS; n_button_ndx++)
+			 button_ids[n_button_ndx]	 = g_game->get_libretro_button_map(n_button_ndx);
+		
+		daphne_retro_init();
+		//if(!sfp)sfp = fopen("/tmp/test.pcm","wb");
+	return ;
+	   }
+#endif
+	//daphne_retro_init();
 
 	// Some of the back end needs to know when certain systems have been init'd.  When
 	// retro_run has run once, all relavent system have been initialized.
 	retro_run_once = true;
-
+#if 1
+if(game_ispause&&game_isresume)
+{
+	if(skipcount>0)
+	{
+		skipcount--;
+		//SDL_Delay(16);return;
+		//static int16_t ab_buffer[2940]={0};
+		//audio_batch_cb(ab_buffer, 2940>>2);
+	}
+else{
+	game_ispause=0;
+	game_isresume=0;
+	printf("resume\n");
+ 	input_pause(false);
+	}
+	
+}
 	// Poll input.
 	input_poll_cb();
 
@@ -513,7 +557,7 @@ void retro_run(void)
 	#endif
 	//g_game->start();
 //printf("run\n");
-	send_sound(NULL);
+//	send_sound(NULL);
 	
 #if 0
 	int ab_ndx = -1;
@@ -560,7 +604,10 @@ void retro_run(void)
 	}
 #else
 	
-	
+	//if(video_cb)
+		
+		video_cb(tmp_frame,640,480,640*4);//tmp_frame
+		
 	
 		//game_thread_unlock();
 		SDL_Delay(16);//32);
@@ -574,7 +621,7 @@ void flush_video(void *buf, int w, int h)
 	if(video_cb)
 	{//printf("flush_video\n");
 		//send_sound(NULL);
-		video_cb(buf, w, h, w*4);
+		//video_cb(buf, w, h, w*4);
 		//game_thread_unlock();
 		//usleep(166);
 		//SDL_Delay(16);
@@ -640,6 +687,7 @@ void retro_cheat_reset(void)
 /**************************************************************************************************
 * Cheat has been activated from frontend.
 **************************************************************************************************/
+extern "C"{extern void set_attract_audio(unsigned char val);}
 void retro_cheat_set(unsigned in_index, bool in_enabled, const char *in_code)
 {
 #if 0
@@ -648,7 +696,22 @@ void retro_cheat_set(unsigned in_index, bool in_enabled, const char *in_code)
 	UNUSED(in_enabled);
 	UNUSED(in_code);
 #endif
-
+	if (g_game){
+			if(in_code[0] == '5')
+			{
+				if(in_index){
+						g_ldp->set_search_blanking(true);
+					g_ldp->set_skip_blanking(true);
+				}
+				else
+				{
+					g_ldp->set_search_blanking(false);
+					g_ldp->set_skip_blanking(false);
+				}
+			}
+			else if(in_code[0] == '3')set_attract_audio(in_index);
+      		g_game->setbank(in_index,  in_code);
+	}
 }
 
 
@@ -1276,8 +1339,8 @@ bool retro_load_game(const struct retro_game_info *in_game)
 		strcat(strCommandline, " ");
 	}
 
-//	if (main_daphne(0/*num_args, pstr_args*/,NULL) != 0)
- //     return false;
+	if (main_daphne(0/*num_args, pstr_args*/,NULL) != 0)
+      return false;
 
    if (g_game)
    {
@@ -1285,6 +1348,7 @@ bool retro_load_game(const struct retro_game_info *in_game)
       for (int n_button_ndx = 0; n_button_ndx < RETRO_MAX_BUTTONS; n_button_ndx++)
          button_ids[n_button_ndx]    = g_game->get_libretro_button_map(n_button_ndx);
 	
+	//daphne_retro_init();
 
    }
 	#endif

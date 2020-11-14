@@ -21,11 +21,13 @@ public:
 	bool is_repaint_needed();
 
 	bool get_digit(unsigned int &uValue, WhichDigit which);
+	
+	static IScoreboard *GetInstance(SDL_Surface *(*pFuncGetActiveOverlay)(), bool bThayers);
 
 private:
 	OverlayScoreboard();
 
-	static IScoreboard *GetInstance(SDL_Surface *(*pFuncGetActiveOverlay)(), bool bThayers);
+	
 
 	void update_player_score (SDL_Surface *pSurface, int player, int start_digit, unsigned int values[], int num_digits);
 	void update_player_lives (SDL_Surface *pSurface, int player, unsigned int lives);

@@ -97,7 +97,7 @@ SDL_Surface *tq_get_active_overlay()
 bool thayers::init()
 {
     bool result = false;
-
+#if 0
     // The "-nosound" arg could have been specified, so don't crank up
     // the synthesizer unless audio is enabled. If -notqspeech was present
     // on the command line, m_use_speech will be false.
@@ -151,7 +151,7 @@ bool thayers::init()
 		}
     }
 	// else sound initialization failed
-
+#endif
     return result;
 }
 
@@ -506,6 +506,7 @@ void thayers::speech_buffer_cleanup(char *src, char *dst, int len)
 
 void thayers::palette_calculate()
 {
+#if !(USE_DRM|LIBRETRO)
 	SDL_Color temp_color;
 
 	// fill color palette with schlop because we only use colors 0 and 0xFF for now
@@ -517,6 +518,7 @@ void thayers::palette_calculate()
 		
 		palette_set_color(i, temp_color);
 	}
+	#endif
 }
 
 void thayers::video_repaint()

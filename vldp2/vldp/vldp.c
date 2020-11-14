@@ -61,7 +61,6 @@ const struct vldp_in_info *g_in_info;	// contains info from parent thread that V
 // that the command has been received
 int vldp_cmd(int cmd)
 {
-#if 1
 	int result = 0;
 	Uint32 cur_time = g_in_info->GetTicksFunc();
 	Uint8 tmp = g_req_cmdORcount;	// we want to replace the real value atomically so we use a tmp variable first
@@ -71,7 +70,7 @@ int vldp_cmd(int cmd)
 	tmp &= 0xF;	// strip off old command
 	tmp |= cmd;	// replace it with new command
 	g_req_cmdORcount = tmp;	// here is the atomic replacement
-	
+	printf("%s %d cmd %d\n", __FUNCTION__,__LINE__,cmd);
 	// loop until we timeout or get a response
 	while ((g_in_info->GetTicksFunc() - cur_time) < VLDP_TIMEOUT)
 	{
@@ -92,9 +91,6 @@ int vldp_cmd(int cmd)
 	}
 	
 	return result;
-#else
-	return 1;
-#endif
 }
 
 // waits until the disc status is 'stat'
@@ -106,6 +102,7 @@ int vldp_wait_for_status(int stat)
 	int result = 0;	// assume error unless we explicitly
 	int done = 0;
 	Uint32 cur_time = g_in_info->GetTicksFunc();
+	printf("%s %d  %d \n", __FUNCTION__,__LINE__,stat);
 	while (!done && ((g_in_info->GetTicksFunc() - cur_time) < VLDP_TIMEOUT))
 	{
 		if (g_out_info.status == stat)
@@ -139,17 +136,13 @@ int vldp_wait_for_status(int stat)
 //////////////////////////////////////////////////////////
 
 void vldp_shutdown()
-{
+{printf("%s %d \n", __FUNCTION__,__LINE__);
 	// only shutdown if we have previous initialized
 	if (p_initialized)
 	{
 		vldp_cmd(VLDP_REQ_QUIT);
 		SDL_WaitThread(private_thread, NULL);	// wait for private thread to terminate
 	}
-	g_req_timer = 0;
-	g_req_cmdORcount = CMDORCOUNT_INITIAL;
-	g_req_skip_per_frame = 0;
-	g_req_stall_per_frame = 0;
 	p_initialized = 0;
 }
 
@@ -160,7 +153,7 @@ int vldp_open(const char *filename)
 {
 	int result = 0;	// assume we're busy so the loop below works the first time
 	FILE *F = NULL;
-	
+	printf("%s file %s \n",__FUNCTION__,filename);
 	if (p_initialized)
 	{
 		F = fopen(filename, "rb");
@@ -184,7 +177,7 @@ int vldp_open(const char *filename)
 VLDP_BOOL vldp_open_precached(unsigned int uIdx, const char *filename)
 {
 	VLDP_BOOL bResult = VLDP_FALSE;
-
+printf("%s %d \n", __FUNCTION__,__LINE__);
 	if (p_initialized)
 	{
 		// even though we're using an index, we still need filename to compute .dat filename
@@ -220,7 +213,7 @@ int vldp_open_and_block(const char *filename)
 VLDP_BOOL vldp_precache(const char *filename)
 {
 	VLDP_BOOL bResult = VLDP_FALSE;
-
+printf("%s %d \n", __FUNCTION__,__LINE__);
 	if (p_initialized)
 	{
 		SAFE_STRCPY(g_req_file, filename, sizeof(g_req_file));
@@ -236,7 +229,7 @@ VLDP_BOOL vldp_precache(const char *filename)
 int vldp_search(Uint16 frame, Uint32 min_seek_ms)
 {
 	int result = 0;
-
+printf("%s %d \n", __FUNCTION__,__LINE__);
 	if (p_initialized)
 	{
 		g_req_frame = frame;
@@ -250,7 +243,7 @@ int vldp_search(Uint16 frame, Uint32 min_seek_ms)
 int vldp_search_and_block(Uint16 frame, Uint32 min_seek_ms)
 {
 	int result = 0;
-
+printf("%s %d \n", __FUNCTION__,__LINE__);
 	if (p_initialized)
 	{
 		g_req_frame = frame;
@@ -264,7 +257,7 @@ int vldp_search_and_block(Uint16 frame, Uint32 min_seek_ms)
 int vldp_play(Uint32 timer)
 {
 	int result = 0;
-
+printf("%s %d \n", __FUNCTION__,__LINE__);
 	if (p_initialized)
 	{
 		g_req_timer = timer;
@@ -277,7 +270,7 @@ int vldp_play(Uint32 timer)
 int vldp_skip(Uint16 frame)
 {
 	int result = 0;
-
+printf("%s %d \n", __FUNCTION__,__LINE__);
 	// we can only skip if the mpeg is already playing (esp. since we don't accept a timer as an argument)
 	if (p_initialized && (g_out_info.status == STAT_PLAYING))
 	{
@@ -373,7 +366,7 @@ const struct vldp_out_info *vldp_init(const struct vldp_in_info *in_info)
 	p_initialized = 0;
 
 	g_in_info = in_info;
-
+printf("%s %d \n", __FUNCTION__,__LINE__);
 	// So parent thread knows if it's compatible with us
 	g_out_info.uApiVersion = API_VERSION;
 

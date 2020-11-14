@@ -182,7 +182,7 @@ bool parse_game_type()
 	// first thing we need to get from the command line is the game type
 	get_next_word(s, sizeof(s));
 
-	//net_set_gamename(s);	// report to server the game we are running
+//	net_set_gamename(s);	// report to server the game we are running
 
 	if (strcasecmp(s, "ace") == 0)
 	{
@@ -193,6 +193,7 @@ bool parse_game_type()
 		g_game = new ace();
 		g_game->set_version(2);
 	}
+	#if 0
 	else if (strcasecmp(s, "ace_a") == 0)
 	{
 		g_game = new ace();
@@ -344,10 +345,12 @@ bool parse_game_type()
 	{
 		g_game = new interstellar();
 	}
+	#endif
 	else if (strcasecmp(s, "lair")==0)
 	{
 		g_game = new lair();
 	}
+	#if 0
 	else if (strcasecmp(s, "lair_f")==0)
 	{
 		g_game = new lair();
@@ -538,6 +541,7 @@ bool parse_game_type()
 	{
 		g_game = new uvt();
 	}
+	#endif
 	else
 	{
 		outstr("ERROR: Unknown game type specified : ");
@@ -579,7 +583,7 @@ bool parse_ldp_type()
 
 	get_next_word(s, sizeof(s));
 
-	//net_set_ldpname(s);	// report to server which ldp we are using
+//	net_set_ldpname(s);	// report to server which ldp we are using
 
 	if (strcasecmp(s, "combo")==0)
 	{
@@ -770,7 +774,7 @@ bool parse_cmd_line(int argc, char **argv)
 		// (don't be paranoid, read the source code, nothing bad is going on)
 		else if (strcasecmp(s, "-noserversend")==0)
 		{
-			//net_no_server_send();
+		//	net_no_server_send();
 		}
 		else if (strcasecmp(s, "-nosound")==0)
 		{

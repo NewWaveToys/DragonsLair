@@ -28,6 +28,7 @@
 
 #include <SDL.h>
 
+
 #define LED_RANGE 17 //16 is normal, the 17th is for the 'A' in SAE
 
 #define OVERLAY_LED_WIDTH 8
@@ -61,10 +62,13 @@ void vid_flip();
 
 // blanks the back video buffer (makes it black)
 void vid_blank();
+#if USE_DRM
 
+void vid_blit(void *srf, int x, int y);
+#else
 // blits an SDL Surface to the back buffer
 void vid_blit(SDL_Surface *srf, int x, int y);
-
+#endif
 void display_repaint();
 bool load_bmps();
 bool draw_led(int, int, int);
@@ -75,8 +79,16 @@ void free_bmps();
 SDL_Surface *load_one_bmp(const char *);
 void free_one_bmp(SDL_Surface *);
 void draw_rectangle(short x, short y, unsigned short w, unsigned short h, unsigned char red, unsigned char green, unsigned char blue);
+#if USE_DRM
+void *get_screen();
+int get_screen_w();
+int get_screen_h();
+char check_hdmi();
+
+#else
 SDL_Surface *get_screen();
 SDL_Surface *get_screen_blitter();
+#endif
 int get_console_initialized();
 bool get_fullscreen();
 void set_fullscreen(bool value);

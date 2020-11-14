@@ -65,7 +65,7 @@ void (*g_soundmix_callback)(Uint8* stream, int length) = mixNone;
 // The # of samples in the sound buffer
 // Matt prefers 1024 but some people (cough Warren) can't handle it haha
 //  but now it can be changed from the command line
-Uint16 g_u16SoundBufSamples = 2048;
+Uint16 g_u16SoundBufSamples =44100/60;//2048;// 
 
 // # of bytes each individual sound chip should be allocated for its buffer
 unsigned int g_uSoundChipBufSize = g_u16SoundBufSamples * AUDIO_BYTES_PER_SAMPLE;
@@ -85,10 +85,12 @@ bool g_bAudioLocked = false;
 #define LOCK_AUDIO assert (!g_bAudioLocked); g_bAudioLocked = true; SDL_LockAudio
 #define UNLOCK_AUDIO assert (g_bAudioLocked); g_bAudioLocked = false; SDL_UnlockAudio
 #else
-#define LOCK_AUDIO SDL_LockAudio
-#define UNLOCK_AUDIO SDL_UnlockAudio
+extern void audio_thread_lock();
+extern void audio_thread_unlock();
+#define LOCK_AUDIO SDL_LockAudio //audio_thread_lock //
+#define UNLOCK_AUDIO SDL_UnlockAudio //audio_thread_unlock //
 #endif // lock audio macros
-
+extern int sound_isrun;
 // added by JFA for -startsilent
 void set_sound_mute(bool bMuted)
 {
@@ -124,7 +126,7 @@ void set_soundbuf_size(Uint16 newbufsize)
 }
 
 static SDL_AudioSpec specDesired, specObtained;
-
+#define SDL_SOUND 1
 bool sound_init()
 // returns a true on success, false on failure
 {
@@ -140,6 +142,7 @@ bool sound_init()
 	// if the user has not disabled sound from the command line
 	if (is_sound_enabled())
 	{
+	#if  SDL_SOUND//!(LIBRETRO|USE_DRM)
 		// if SDL audio initialization was successful
 		if (SDL_InitSubSystem(SDL_INIT_AUDIO) >= 0)
 		{
@@ -163,6 +166,7 @@ bool sound_init()
 					(specObtained.freq == audio_rate) &&
 					(specObtained.callback == audio_callback))
 				{
+				#endif
 					// if we can load all our waves, we're set
 					if (load_waves())
 					{
@@ -181,7 +185,7 @@ bool sound_init()
 
 						// initialize sound chips
 						init_soundchip();
-
+#if  SDL_SOUND// !(LIBRETRO|USE_DRM)
 						if (specObtained.samples != g_u16SoundBufSamples)
 						{
 							string strWarning = "WARNING : requested " + numstr::ToStr(g_u16SoundBufSamples) +
@@ -191,18 +195,20 @@ bool sound_init()
 							// reset memory allocations
 							set_soundbuf_size(specObtained.samples);
 						}
-
+#endif
 						result = true;
 						g_sound_initialized = true;
-
+#if SDL_SOUND//!(LIBRETRO|USE_DRM)
 						// enable the audio callback (this should come last to be safe)
 						SDL_PauseAudio(0);	// start mixing! :)
+						#endif
 					}
 					// else if loading waves failed
 					else
 					{
 						printline("ERROR: one or more required sound sample files could not be loaded!");
 					}
+					#if SDL_SOUND//!(LIBRETRO|USE_DRM)
 				} // end if audio specs are correct
 				else
 				{
@@ -217,7 +223,9 @@ bool sound_init()
 				printline(SDL_GetError());
 				g_sound_enabled = false;
 			}
+		
 		} // end if sound initializtion worked	  
+			#endif
 	} // end if sound is enabled
 	
 	// if sound isn't enabled, then we act is if sound initialization worked so daphne doesn't quit
@@ -225,7 +233,7 @@ bool sound_init()
 	{
 		result = true;
 	}
-	
+	sound_isrun = 1;
 	return(result);
 	
 }
@@ -237,12 +245,18 @@ void sound_shutdown()
 	if (g_sound_initialized)
 	{
 		printline("Shutting down sound system...");
+		#if 1// LIBRETRO
 		SDL_PauseAudio(1);
 		SDL_CloseAudio();
+#endif
 		free_waves();
 		shutdown_soundchip();
 		g_sound_initialized = 0;
-		SDL_QuitSubSystem(SDL_INIT_AUDIO);
+		#if 1// LIBRETRO
+		//SDL_QuitSubSystem(SDL_INIT_AUDIO);
+		#endif
+		g_soundchip_head =NULL;
+		
 	}
 }
 
@@ -275,7 +289,7 @@ bool sound_play_saveme()
 	
 	return result;
 }
-
+#include "io/homedir.h"
 // loads the wave files into the wave structure
 // returns 0 if failure, or non-zero if success
 int load_waves()
@@ -288,7 +302,7 @@ int load_waves()
 
 	for (; (i < g_game->get_num_sounds()) && result; i++)
 	{
-		filename = "sound/";
+		filename = g_homedir.get_homedir() + "/sound/";
 		filename += g_game->get_sound_name(i);
 
 		// initialize so that shutting down succeeds
@@ -325,7 +339,7 @@ int load_waves()
 	}
 	
 	// load "saveme" sound in
-	if (!SDL_LoadWAV("sound/saveme.wav", &spec, &g_sample_saveme.pu8Buf, &g_sample_saveme.uLength))
+	if (!SDL_LoadWAV((g_homedir.get_homedir() + "/sound/saveme.wav").c_str(), &spec, &g_sample_saveme.pu8Buf, &g_sample_saveme.uLength))
 	{
 		printline("Loading 'saveme.wav' failed...");
 		result = 0;
@@ -384,7 +398,8 @@ unsigned int add_soundchip(struct sounddef *candidate)
 	LOCK_AUDIO();	// safety precaution, we don't want callback running during this function
 
 	struct sounddef *cur = NULL;
-	
+	printf("%s %d \n",__FUNCTION__,__LINE__);
+
 	// if this is the first sound chip to be added to the list
 	if (!g_soundchip_head)
 	{
@@ -410,7 +425,7 @@ unsigned int add_soundchip(struct sounddef *candidate)
 	memcpy(cur, candidate, sizeof(struct sounddef));	// copy entire thing over
 	cur->id = g_uSoundChipNextID;
 	cur->internal_id = 0;	// sensible initial value
-
+	
 	// This function will be called before the user has a chance to modify the volumes,
 	//  so we will initialize them all to sensible defaults.
 	cur->uDriverVolume[0] = cur->uDriverVolume[1] =
@@ -432,7 +447,6 @@ unsigned int add_soundchip(struct sounddef *candidate)
 	cur->write_ctrl_data_callback = NULL;
 
 	memset(cur->buffer, 0, g_uSoundChipBufSize);
-	
 	// now we must assign the appropriate callbacks
 	switch (cur->type)
 	{
@@ -497,6 +511,8 @@ bool delete_soundchip(unsigned int id)
 	bool bSuccess = false;
 	struct sounddef *cur = g_soundchip_head;
 	struct sounddef *prev = NULL;
+
+	
 
 	LOCK_AUDIO();
 	// if 1 or more sound chips exists ...
@@ -881,8 +897,9 @@ void shutdown_soundchip()
 		delete [] temp->buffer;
 		delete temp;
 	}
-	g_soundchip_head = NULL;
+	
 	UNLOCK_AUDIO();	
+	g_uSoundChipNextID = 0;
 }
 
 void update_soundbuffer()

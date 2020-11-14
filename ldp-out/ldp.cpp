@@ -108,7 +108,7 @@ bool ldp::pre_init()
 
 	bool result = true;	// assume everything works until we find out otherwise
 	bool temp = true;	// needed to make && work the way we want below
-
+printf("%s line %d \n",__FUNCTION__,__LINE__);
 	// If we are controlling a real LDP,
 	// or if we are controlling a combo and DVD initialized properly,
 	// then initialize the serial port here
@@ -122,6 +122,7 @@ bool ldp::pre_init()
 	}
 	
 	player_initialized = init_player();
+	
 	result = temp && player_initialized;
 	m_start_time = GET_TICKS();
 	m_uElapsedMsSincePlay = 0;
@@ -137,6 +138,7 @@ bool ldp::pre_init()
 	m_uFramesToSkipPerFrame = 0;
 	m_uFramesToStallPerFrame = 0;
 	m_uStallFrames = 0;
+	printf("%s line %d result %d \n",__FUNCTION__,__LINE__,result);
 
 	return(result);
 

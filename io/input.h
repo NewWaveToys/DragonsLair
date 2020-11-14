@@ -47,6 +47,8 @@ enum
 	SWITCH_PAUSE,
 	SWITCH_CONSOLE,
 	SWITCH_TILT,
+	// RJS ADD - coin start switch
+	SWITCH_COINSTART,
 	SWITCH_COUNT,
 	// RJS ADD - for switch clairity
 	SWITCH_NOTHING
@@ -88,6 +90,7 @@ void process_joystick_hat_motion(SDL_Event *event);
 bool get_consoledown();
 void set_consoledown(bool);
 void check_console_refresh();
+bool input_pause(bool fPaused);
 void input_enable(Uint8);
 void input_disable(Uint8);
 inline void add_coin_to_queue(bool enabled, Uint8 val);

@@ -738,19 +738,24 @@ void tms9128nl_outcommand(char *s,int col,int row)
 {
 // gp2x doesn't have enough resolution to display this schlop anyway...
 #ifndef GP2X
+ #if USE_SDL
     SDL_Rect dest;
 
     dest.x = (short) ((col*6) + 200);
     dest.y = (short) ((row*13) + 100);
     dest.w = (unsigned short) (6 * strlen(s)); // width of rectangle area to draw (width of font * length of string)
     dest.h = 13;	// height of area (height of font)
-
+#endif
     // VLDP freaks out if it's not the only thing drawing to the screen
     if (!g_ldp->is_vldp())
     {
+    #if USE_DRM
+
+	#else
 		vid_blank();
 	    SDLDrawText(s, get_screen_blitter(), FONT_SMALL, dest.x, dest.y);
 		// TODO : get this working again under the new video scheme
+		#endif
     }
 #endif
 }

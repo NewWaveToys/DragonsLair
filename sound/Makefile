@@ -1,5 +1,4 @@
 # sub Makefile
-
 %.d : %.cpp
 	set -e; $(CXX) -MM $(CFLAGS) $< \
 		| sed 's^\($*\)\.o[ :]*^\1.o $@ : ^g' > $@; \
@@ -20,7 +19,7 @@ include $(OBJS:.o=.d)
 # MMX audio mixing function (conditional upon whether USE_MMX is defined)
 mix_mmx-asm:  mix_mmx-gas.s
 ifeq ($(USE_MMX),1)
-	as mix_mmx-gas.s -o mix_mmx-gas.o
+	$(AS)  mix_mmx-gas.s -o mix_mmx-gas.o
 endif
 
 clean:

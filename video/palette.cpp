@@ -156,6 +156,7 @@ void palette_finalize()
 {
 	if (g_palette_modified)
 	{
+	#if USE_SDL
 		// update color palette for all the surfaces that we are using
 		for (int i = 0;; i++)
 		{
@@ -176,7 +177,7 @@ void palette_finalize()
 		{
 			SDL_SetColors(g_game->get_scaled_video_overlay(), g_rgb_palette, 0, g_palette_size);
 		}
-
+#endif
 #ifdef USE_OPENGL
 		// if we're using OpenGL, we need to update the palette texture
 		if (get_use_opengl())

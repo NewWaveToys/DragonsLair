@@ -74,7 +74,7 @@ using namespace std;
 #include "video/video.h"
 #include "video/led.h"
 #include "ldp-out/ldp.h"
-#include "video/SDL_Console.h"
+//#include "video/SDL_Console.h"
 #include "io/error.h"
 #include "cpu/cpu-debug.h"
 #include "cpu/cpu.h"
@@ -113,6 +113,11 @@ unsigned char get_filename(char *s, unsigned char n)
 
 	return(result);
 
+}
+
+void set_quitflag(int nFlag)
+{
+	quitflag = nFlag;
 }
 
 void set_quitflag()
@@ -158,8 +163,649 @@ void set_cur_dir(const char *exe_loc)
 		change_dir(path.c_str());
 	}
 }
-/////////////////////// MAIN /////////////////////
+#include "ui/rthreads/rthreads.h"
+static sthread_t *mSoundthread = NULL;
+static slock_t *audio_lock=NULL;
 
+#if 1
+extern bool g_cpu_paused;
+extern int game_ispause;
+
+extern "C"{
+//extern unsigned char *get_soundbuf();
+//extern void playaudio(int len);
+//char checksound(){
+	//if(game_ispause !=g_cpu_paused)
+	//		input_pause(game_ispause);
+
+//return g_cpu_paused||(game_ispause/*&&g_ldp->get_status()==LDP_PAUSED*/);}
+}
+extern int send_sound(void *p);
+int sound_isrun = 0;
+
+static void sound_run_thread(void* p)
+{
+	sleep(1);
+
+	while(!get_quitflag())
+	{
+		if(game_ispause !=g_cpu_paused)
+			input_pause(game_ispause);
+		//printf("%d g_cpu_paused \n",g_cpu_paused);
+		if(g_cpu_paused||(game_ispause&&g_ldp->get_status()==LDP_PAUSED))
+		{
+			usleep(1666);
+			continue;
+		}
+		
+		if(sound_isrun)
+			send_sound(NULL);
+		else sleep(1);
+		//audio_callback ( NULL, audio_buffer, 2940);
+	//	playaudio(2940);
+		//sleep(1);
+	//	usleep(100);
+	}
+}
+#endif
+#ifdef LIBRETRO
+#include "ldp-out/ldp-vldp.h"
+#include "game/lair.h"
+#include "game/game.h"
+
+
+static sthread_t *mGamethread = NULL;
+static char needlock = 1;
+
+
+static void game_run_thread(void* p)
+{
+	//sleep(2);
+	//printf("%s %d \n",__FUNCTION__,__LINE__);
+	
+	while(!get_quitflag())
+	{
+			//	usleep(410);//380);
+		//SDL_Delay(16);
+		/*if(checksound())
+		{
+			usleep(1666);
+			continue;
+		}*/
+			g_game->start();
+			
+		//send_sound(NULL);
+
+	}
+}
+void audio_thread_lock()
+{
+	if(audio_lock)
+		slock_lock(audio_lock);
+}
+void audio_thread_unlock()
+{
+	if(audio_lock)
+			slock_unlock(audio_lock);
+
+}
+
+void daphne_retro_init()
+{
+	/*if(!mSoundthread)
+	{
+	 	audio_lock = slock_new();
+		mSoundthread = sthread_create(sound_run_thread, NULL);
+	}*/
+	if(!mGamethread)
+	  {
+		needlock = 0;
+		  mGamethread = sthread_create(game_run_thread, NULL);
+		  
+	  }
+}
+#include "parameter.h"
+
+ void preset_param()
+{
+	parameter_init();
+	g_game->setbank(get_joystick_sound(),"0");
+	g_game->setbank(get_dirks_per_credit(),"1");
+	g_game->setbank(get_difficulty_level(),"2");
+	//g_game->setbank(get_attract_audio(),"3");
+	g_game->set_prefer_samples(true);
+	if(get_screen_blanking())
+	{
+		g_ldp->set_search_blanking(true);
+		g_ldp->set_skip_blanking(true);
+	}
+	else
+	{
+		g_ldp->set_search_blanking(false);
+		g_ldp->set_skip_blanking(false);
+	}
+	
+}
+bool check_preview_sound()
+{//printf("%s %d = %d \n",__FUNCTION__,get_attract_audio(),g_game->getLives());
+	return get_attract_audio()||g_game->getLives();
+}
+
+
+int main_daphne(int argc, char **argv)
+{
+	int result_code = 1;	// assume an error unless we find otherwise
+
+//	set_cur_dir(argv[0]);	// set active directory
+
+//	input_invert_controls(false);
+	
+		ldp_vldp *cur_ldp;
+		lair *game_lair_or_sa;
+		
+		g_homedir.set_homedir("/mnt/sdcard");
+		//change_dir("/mnt/sdcard");
+		set_quitflag(0);
+		g_game = new lair();
+		
+		g_ldp = new ldp_vldp();
+		preset_param();
+		cur_ldp = dynamic_cast<ldp_vldp *>(g_ldp);
+		if (cur_ldp)			
+		{		
+			cur_ldp->set_framefile("/mnt/sdcard/lair.txt");
+		}
+		game_lair_or_sa = dynamic_cast<lair *>(g_game);
+		if (game_lair_or_sa)						
+			game_lair_or_sa->init_overlay_scoreboard();
+		
+		g_game->set_fastboot(true);
+		
+		if (init_display())
+		{
+			if (sound_init())
+			{
+				if (SDL_input_init())
+				{
+					// if the roms were loaded successfully
+					if (g_game->load_roms())
+					{
+						// if the video was initialized successfully
+						if (g_game->video_init())
+						{
+							// if the game has some problems, notify the user before the user plays the game
+						/*	if (g_game->get_issues())
+							{
+								printnowookin(g_game->get_issues());
+							}*/
+
+							//SDL_Delay(1000);
+							// delay for a bit before the LDP is intialized to make sure
+							// all video is done getting drawn before VLDP is initialized
+
+							// if the laserdisc player was initialized properly
+							if (g_ldp->pre_init())
+							{
+								if (g_game->pre_init()) 	// initialize all cpu's
+								{
+									result_code = 0;	// daphne will exit without any errors
+								}
+								else
+								{
+									result_code = 1;
+									//exit if returns an error but don't print error message to avoid repetition
+								}
+							
+						}
+						else
+						{
+							printerror("Could not initialize laserdisc player!");
+						}
+						
+					} // end if game video was initted properly
+					else
+					{
+						printerror("Game-specific video initialization failed!");
+					}
+				} // end if roms were loaded properly
+				else
+				{
+					printerror("Could not load ROM images! You must supply these.");
+				}
+				
+			}
+			else
+			{
+				printerror("Could not initialize input!");
+			}
+			
+		}
+		else
+		{
+			printerror("Sound initialization failed!");
+		}
+		
+	} // end init display
+	else
+	{
+		printerror("Video initialization failed!");
+	}
+
+
+	return(result_code);
+}
+
+int main_daphne_mainloop()
+{
+	g_game->start();
+	return 0;
+}
+extern int game_ispause;
+int main_daphne_shutdown()
+{
+	int result_code = 0;	// daphne will exit without any errors
+			
+	if (g_game)
+	{
+		
+		needlock = 0;
+		game_ispause = 0;
+		SDL_PauseAudio(1);
+		SDL_UnlockAudio();
+		SDL_CloseAudio();
+
+		if(audio_lock)
+		{
+			slock_unlock(audio_lock);
+			slock_free(audio_lock);
+			audio_lock=NULL;
+		}
+		if(mSoundthread)sthread_join(mSoundthread);
+			mSoundthread=NULL;
+			
+		if(mGamethread) 
+			sthread_join(mGamethread);
+			mGamethread = NULL;
+			//printf("%s %d \n", __FUNCTION__,__LINE__);
+		g_game->pre_shutdown();//printf("%s %d \n", __FUNCTION__,__LINE__);
+		g_ldp->set_stop_on_quit(true);
+		//printf("%s %d \n", __FUNCTION__,__LINE__);
+
+		g_ldp->pre_shutdown();//printf("%s %d \n", __FUNCTION__,__LINE__);
+		g_game->video_shutdown();//printf("%s %d \n", __FUNCTION__,__LINE__);
+		//printf("%s %d \n", __FUNCTION__,__LINE__);
+
+		sound_shutdown();
+		shutdown_display();
+
+		delete(g_game);
+		g_game = NULL;
+		
+	}
+
+	if (g_ldp)
+	{
+		delete(g_ldp);
+		g_ldp = NULL;
+	}
+	
+	/*if(audio_lock)
+	{
+		slock_free(audio_lock);
+		audio_lock=NULL;
+	}*/
+
+	//free_bmps();
+	//restore_leds();
+	return(result_code);
+}
+#else
+/////////////////////// MAIN /////////////////////
+#if 1
+#include "parameter.h"
+#include "interface.h"
+#include "../ldp-out/ldp-vldp.h"
+#include "../game/lair.h"
+#include "../game/game.h"
+
+
+
+extern "C"
+{
+	bool is_run=false,is_pause=false;
+	extern int initfb();
+	extern int open_alsa();
+	extern  void close_alsa();
+	extern void deinitfb();
+	extern int init_keyevent();
+	extern int deinit_keyevent();
+	
+	static void preset_param()
+	{
+		g_game->setbank(get_joystick_sound(),"0");
+		g_game->setbank(get_dirks_per_credit(),"1");
+		g_game->setbank(get_difficulty_level(),"2");
+		g_game->setbank(get_attract_audio(),"3");
+		g_game->set_prefer_samples(true);
+		if(get_screen_blanking())
+		{
+			g_ldp->set_search_blanking(true);
+			g_ldp->set_skip_blanking(true);
+		}
+		else
+		{
+			g_ldp->set_search_blanking(false);
+			g_ldp->set_skip_blanking(false);
+		}
+		
+	}
+	
+	
+	static int init_game(const char* dir)
+	{
+		int result_code=1;
+		ldp_vldp *cur_ldp;
+		lair *game_lair_or_sa;
+		quitflag = 0;
+		g_homedir.set_homedir("/mnt/sdcard");
+		//change_dir("/mnt/sdcard");
+		
+		g_game = new lair();
+		
+		g_ldp = new ldp_vldp();
+		preset_param();
+		cur_ldp = dynamic_cast<ldp_vldp *>(g_ldp);
+		if (cur_ldp)			
+		{		
+			cur_ldp->set_framefile("/mnt/sdcard/lair.txt");
+		}
+		game_lair_or_sa = dynamic_cast<lair *>(g_game);
+		if (game_lair_or_sa)						
+			game_lair_or_sa->init_overlay_scoreboard();
+		
+		
+		
+		g_game->set_fastboot(true);
+		
+		
+		if (init_display())
+		{
+			if (sound_init())
+			{
+				if (SDL_input_init())
+				{
+					// if the roms were loaded successfully
+					if (g_game->load_roms())
+					{
+						// if the video was initialized successfully
+						if (g_game->video_init())
+						{
+							// if the game has some problems, notify the user before the user plays the game
+						/*	if (g_game->get_issues())
+							{
+								printnowookin(g_game->get_issues());
+							}*/
+
+						//	SDL_Delay(1000);
+							// delay for a bit before the LDP is intialized to make sure
+							// all video is done getting drawn before VLDP is initialized
+
+							// if the laserdisc player was initialized properly
+							if (g_ldp->pre_init())
+							{
+								if (g_game->pre_init())     // initialize all cpu's
+								{                         
+									printline("Booting ROM ...");
+									is_run = true;//preset_param();
+
+									// Send our game/ldp type to server to create stats.
+									// This was moved to after the game has finished running because it creates a slight delay (like 1 second),
+									//  which throws off the think_delay function in the LDP class.
+									//net_send_data_to_server();
+
+									result_code = 0;	// daphne will exit without any errors
+								}
+								else
+								{
+									//exit if returns an error but don't print error message to avoid repetition
+								}
+								
+							}
+							else
+							{
+								printerror("Could not initialize laserdisc player!");
+							}
+							
+						} // end if game video was initted properly
+						else
+						{
+							printerror("Game-specific video initialization failed!");
+						}
+					} // end if roms were loaded properly
+					else
+					{
+						printerror("Could not load ROM images! You must supply these.");
+					}
+					
+				}
+				else
+				{
+					printerror("Could not initialize input!");
+				}
+				
+			}
+			else
+			{
+				printerror("Sound initialization failed!");
+			}
+			
+		} // end init display
+		else
+		{
+			printerror("Video initialization failed!");
+		}
+	 // end game class allocated properly
+
+	
+
+	
+return result_code;
+	}
+	static	int deinit_game()
+	{
+		is_run = false;
+		g_game->pre_shutdown();
+		g_ldp->set_stop_on_quit(true);
+		g_ldp->pre_shutdown();
+		g_game->video_shutdown();
+		SDL_input_shutdown();
+		sound_shutdown();
+		shutdown_display();	// shut down the display
+		// if our g_game class was allocated
+		if (g_game)
+		{
+			delete(g_game);
+		}
+
+		// if g_ldp was allocated, de-allocate it
+		if (g_ldp)
+		{
+			delete(g_ldp);
+		}
+		//SDL_Quit();
+return 0;
+	}
+	extern void game_setkey(unsigned short code, int value);
+	 int onkey(unsigned short code, unsigned int value)
+	{
+		if(code == 107&&value==1)
+		{	
+			quitflag = 1;
+			//deinit_keyevent();
+			is_run = 0;
+			printf("%d == %d \n", code, value);
+			return 0;
+		}
+		printf("%d %d \n", code, value);
+		game_setkey(code,value);
+		return 0;
+	}
+	static int onrender()
+	{
+		if(is_run&&!is_pause)
+			return g_game->start();	// HERE IS THE MAIN LOOP RIGHT HERE
+			else return 0;	
+	}
+	static int game_pause(int flag)
+	{
+		g_game->game_pause();
+		return 0;
+	}
+	static int game_resume(int flag)
+	{
+		//if(game_is_change())
+		{
+		#if 1
+			g_game->game_resume();
+			quitflag = 1;
+			sleep(0);
+			
+			deinit_game();
+			sleep(1);
+			//set_sound_enabled_status(true);
+			init_game(NULL);
+			
+		#else
+			g_game->game_resume();
+			//
+			printf("%s %d \n",__FUNCTION__,__LINE__);
+			preset_param();
+			//
+			g_game->reset();
+			#endif
+			
+		}
+		#if 0
+		else
+		{
+		preset_param();
+		g_game->game_resume();
+		
+		}
+		#endif
+		return 0;
+	}
+	extern void reset_alsa();
+	static void onreset()
+	{
+		//sound_shutdown();
+		//sound_init();
+		reset_alsa();
+	}
+	#include "rthreads/rthreads.h"
+	#include <signal.h>
+	extern int deinit_loopkeyevent();
+		extern void play_silence();
+		extern void deinit_buf();
+		extern void init_buf();
+
+	static void frontend_unix_sighandler(int sig)
+	{
+	printf("%s %d \n",__FUNCTION__,sig);
+	//extern volatile int g_reinit_audio;
+	//extern volatile int g_reinit_video;
+	   if (sig == SIGUSR2) {
+	    //  g_reinit_video = 1;
+	   is_pause = 1;
+		
+		sleep(1);
+	    deinitfb();
+		
+		initfb();
+		
+		//reset_alsa();
+		is_pause = 0;
+	      return;
+	   } else if (sig == SIGUSR1) {
+	    //  g_reinit_audio = 1;
+	 /*   open_alsa();
+		play_silence();
+		close_alsa();
+		*/
+		
+		
+	      return;
+	   }
+	   else if(sig == SIGTERM)exit(1);
+	}
+	void set_HDIM_sigint()
+	{
+		struct sigaction sa;
+		
+		   sa.sa_sigaction = NULL;
+		   sa.sa_handler   = frontend_unix_sighandler;
+		   sa.sa_flags	   = SA_RESTART;
+		   sigemptyset(&sa.sa_mask);
+		   sigaction(SIGINT, &sa, NULL);
+		   sigaction(SIGTERM, &sa, NULL);
+		
+		   // Use SIGUSR2 to reinit video, SIGUSR1 to reinit audio.
+		   sigaction(SIGUSR1, &sa, NULL);
+		   sigaction(SIGUSR2, &sa, NULL);
+
+	}
+	
+	int main(int argc, char **argv)
+	{	
+		
+		if(0 != initfb())return 0;
+		
+		parameter_init();
+		init_buf();
+		
+		/*open_alsa();
+		play_silence();
+		close_alsa();*/
+		
+		open_alsa();
+		
+		init_game(NULL);
+		
+		init_keyevent();
+		set_HDIM_sigint();
+		if(!mSoundthread)
+	{
+		mSoundthread = sthread_create(sound_run_thread, NULL);
+	}
+		while(is_run)
+		{
+			onrender();
+		}
+		deinit_loopkeyevent();
+		
+		deinit_game();
+		
+		close_alsa();
+		deinitfb();
+		deinit_buf();
+		deinit_keyevent();
+		return 0;
+	}
+
+	
+	struct page gamemode_page =
+	{
+		"uimode",
+		init_game,
+		deinit_game,
+		onkey,
+		onrender,
+		onreset,
+		game_pause,
+		game_resume
+	};
+}
+#else
 // the main function for both Windows and Linux <grin>
 int main(int argc, char **argv)
 {
@@ -172,14 +818,13 @@ int main(int argc, char **argv)
 	// initialize SDL without any subsystems but with the no parachute option so
 	// 1 - we can initialize either audio or video first
 	// 2 - we can trace segfaults using a debugger
-//retry:
-	quitflag = 0;
+	#if 0
 	if (SDL_Init(SDL_INIT_NOPARACHUTE) < 0)
 	{
 		printerror("Could not initialize SDL!");
 		exit(1);
 	}
-
+#endif
 	// parse the command line (which allocates game and ldp) and continue if no errors
 	// this is important!  if game_type or ldp_type fails to allocate g_game and g_ldp,
 	// then the program will segfault and daphne must NEVER segfault!  hehe
@@ -225,7 +870,7 @@ int main(int argc, char **argv)
 									// Send our game/ldp type to server to create stats.
 									// This was moved to after the game has finished running because it creates a slight delay (like 1 second),
 									//  which throws off the think_delay function in the LDP class.
-								//	net_send_data_to_server();
+									//net_send_data_to_server();
 
 									result_code = 0;	// daphne will exit without any errors
 								}
@@ -295,12 +940,12 @@ int main(int argc, char **argv)
 	restore_leds();  // sets keyboard leds back how they were (this is safe even if we have the led's disabled)
 
 	SDL_Quit();
-	//goto retry;
 	exit(result_code);
 
 }
+#endif
 
-
+#endif //	#ifdef LIBRETRO
 // sets the serial port to be used to control LDP
 void set_serial_port(unsigned char i)
 {

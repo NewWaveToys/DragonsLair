@@ -372,7 +372,7 @@ char *get_cpu_name()
 		mov reg_edx, edx
 	}
 #else
-    asm
+     __asm__ __volatile__
     (
     	"xor %%eax, %%eax\n\t"
     	"cpuid\n\t"

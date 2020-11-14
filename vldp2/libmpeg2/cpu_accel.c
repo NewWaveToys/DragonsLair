@@ -73,6 +73,7 @@ static inline uint32_t arch_accel (void)
 	     :
 	     : "cc");
 
+
     if (eax == ebx)		/* no cpuid */
 	return 0;
 

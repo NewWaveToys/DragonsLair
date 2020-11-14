@@ -83,8 +83,9 @@ void add_cpu(struct cpudef *);	// add a new cpu
 void del_all_cpus();	// delete all cpus that have been added (for shutting down daphne)
 void cpu_init();	// initialize one cpu
 void cpu_shutdown();	// shutdown all cpus
-void cpu_execute();
+int cpu_execute();
 void cpu_reset();
+void cpu_prexecute();
 
 // Creates an precisely timed 'event'. After 'uCyclesTilEvent' elapses, event_callback will be called.
 // Each even is just a one-shot deal, it doesn't loop.

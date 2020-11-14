@@ -391,6 +391,7 @@ bool ldp_vldp::open_audio_stream(const string &strFilename)
 	}
 
 	mmreset();	// reset the mm wrappers for new use
+	printf("%s %d ogg_path %s \n", __FUNCTION__,__LINE__, (m_mpeg_path + strFilename).c_str());
 
 	g_pIOAudioHandle = mpo_open((m_mpeg_path + strFilename).c_str(), MPO_OPEN_READONLY);
 	// if audio file was opened successfully
@@ -533,7 +534,9 @@ void ldp_vldp::audio_pause()
 char g_small_buf[AUDIO_BUF_CHUNK] = { 0 };
 Uint8 g_leftover_buf[AUDIO_BUF_CHUNK] = { 0 };
 int g_leftover_samples = 0;
-
+//extern "C"{
+	extern bool check_preview_sound();
+	//}
 // our audio callback
 void ldp_vldp_audio_callback(Uint8 *stream, int len, int unused)
 {
@@ -572,13 +575,16 @@ void ldp_vldp_audio_callback(Uint8 *stream, int len, int unused)
 			{
 				if (g_leftover_samples <= len)
 				{
-					paudiocopy(stream, g_leftover_buf, g_leftover_samples);
+						paudiocopy(stream, g_leftover_buf, g_leftover_samples);
+					if(!check_preview_sound()) memset(stream, 0, g_leftover_samples);
 					samples_copied += g_leftover_samples;
 					g_leftover_samples = 0;
 				}
 				else
 				{
+				
 					paudiocopy(stream, g_leftover_buf, len);
+				if(!check_preview_sound()) memset(stream, 0, len);
 					memmove(g_leftover_buf, g_leftover_buf + len, g_leftover_samples - len);	// shift remaining buf to front
 					// memmove is used because the memory area overlaps
 					samples_copied = len;
@@ -613,8 +619,11 @@ void ldp_vldp_audio_callback(Uint8 *stream, int len, int unused)
 						g_leftover_samples = samples_read - bytes_to_read;
 						memcpy(g_leftover_buf, g_small_buf + bytes_to_read, g_leftover_samples);
 					}
+					
+						paudiocopy(stream + samples_copied, g_small_buf, bytes_to_read);
+					if(!check_preview_sound())
+						memset(stream + samples_copied, 0, bytes_to_read);
 
-					paudiocopy(stream + samples_copied, g_small_buf, bytes_to_read);
 					samples_copied += bytes_to_read;
 				} // end if samples were read
 

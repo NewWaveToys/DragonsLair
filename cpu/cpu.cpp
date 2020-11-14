@@ -247,6 +247,12 @@ void del_all_cpus()
 	}
 	g_head = NULL;
 	g_cpu_count = 0;
+	
+	g_cpu_paused = false;
+	while (g_cpu_paused_timer.size() > 0)
+	{
+		g_cpu_paused_timer.pop();
+	}
 
 }
 
@@ -358,46 +364,76 @@ void cpu_shutdown()
 	}
 	
 	del_all_cpus();
+
+	reset_cpu_globals();
 }
 
+Uint32 last_inputcheck = 0; //time we last polled for input events
 
 
-// executes all cpu cores "simultaneously".  this function only returns when the game exits
-void cpu_execute()
+void cpu_prexecute()
 {
-	int i = 0;
-	Uint32 last_inputcheck = 0; //time we last polled for input events
-	struct cpudef *cpu = g_head;
+	
+	struct cpudef *exec_cpu; 
+	exec_cpu = g_head;
+	
+		
+//	printf("%s %d \n", __FUNCTION__,__LINE__);
 
 	// flush the cpu timers one time so we don't begin with the cpu's running too quickly
 	g_expected_elapsed_ms = 0;
 	g_cpu_timer = refresh_ms_time();	// so the cpu doesn't run too quickly when we first start
 
 	// clear each cpu
-	while (cpu)
+	while (exec_cpu)
 	{
 		for (int i = 0; i < MAX_IRQS; i++)
 		{
-			cpu->uIRQTickCount[i] = 0;
-			cpu->uIRQTickBoundaryMs[i] = cpu->uIRQMicroPeriod[i] / 1000;	// when the 1st IRQ will tick
+			exec_cpu->uIRQTickCount[i] = 0;
+			exec_cpu->uIRQTickBoundaryMs[i] = exec_cpu->uIRQMicroPeriod[i] / 1000;	// when the 1st IRQ will tick
 		//	cpu->irq_cycle_count[i] = 0;
 		}
-		cpu->uNMITickCount = 0;
-		cpu->uNMITickBoundaryMs = cpu->uNMIMicroPeriod / 1000;	// when the 1st NMI will tick
+		exec_cpu->uNMITickCount = 0;
+		exec_cpu->uNMITickBoundaryMs = exec_cpu->uNMIMicroPeriod / 1000;	// when the 1st NMI will tick
 		//cpu->nmi_cycle_count = 0;
-		cpu->total_cycles_executed = 0;		
-		cpu = cpu->next_cpu;
+		exec_cpu->total_cycles_executed = 0; 	
+		exec_cpu = exec_cpu->next_cpu;
 	}
-	// end flushing the cpu timers
+
+}
+
+// executes all cpu cores "simultaneously".  this function only returns when the game exits
+int cpu_execute()
+{
+	struct cpudef *cpu; 
+	// end flushing the cpu timer
+	//#if LIBRETRO
+	//cpu_prexecute();
+	//#else
+	
+	
+	//printf("%s %d game_ispause ==%d\n",__FUNCTION__,__LINE__,g_cpu_paused);
+	/*if (g_cpu_paused)
+	{
+		make_delay(1);		
+		//printf("%s %d \n",__FUNCTION__,__LINE__);
+		return 1;
+	}*/
+	//#endif
+	int i = 0;
 
 	// loop until the quit flag is set which means the user wants to quit the program
-	while (!get_quitflag())
-	{
+	#if LIBRETRO
+	//printf("%s %d \n",__FUNCTION__,__LINE__);
+
+//	while (!get_quitflag())
+		#endif
+	{//printf("%s %d \n",__FUNCTION__,__LINE__);
 		unsigned int actual_elapsed_ms = 0;
 		bool nmi_asserted = false;
 		Uint32 elapsed_cycles = 0;
 		Uint32 cycles_to_execute = 0;	// how many cycles to execute this time around
-
+		
 		// we want to execute enough cycles to reach our expectation for # of elapsed ms
 		g_expected_elapsed_ms++;
 
@@ -436,9 +472,11 @@ void cpu_execute()
 					// if we have no upcoming event
 					if (cpu->uEventCyclesEnd == 0)
 					{
+						
 						// get us up to our expected elapsed MS
 						elapsed_cycles = (cpu->execute_callback)((Uint32) cycles_to_execute);
-
+						
+//system("free");
 						cpu->total_cycles_executed += elapsed_cycles;	// always track how many cycles have elapsed
 					}
 					// else we have an active event going on, check to see if we need to execute less cycles in order to fire event
@@ -463,6 +501,7 @@ void cpu_execute()
 								elapsed_cycles = (cpu->execute_callback)(uCyclesTilEvent);
 								cpu->total_cycles_executed += elapsed_cycles;	// always track how many cycles have elapsed
 	
+
 #ifdef CPU_DIAG
 								cd_cycle_count[g_active_cpu] += elapsed_cycles;
 #endif // CPU_DIAG
@@ -483,10 +522,10 @@ void cpu_execute()
 								break;
 							}
 						}
-
+						
 						// get us up to our expected elapsed MS
 						elapsed_cycles = (cpu->execute_callback)((Uint32) cycles_to_execute);
-
+						
 						cpu->total_cycles_executed += elapsed_cycles;	// always track how many cycles have elapsed
 						cpu->uEventCyclesExecuted += elapsed_cycles;
 					}
@@ -521,9 +560,9 @@ void cpu_execute()
 				// if we have an NMI waiting
 				// (this can be created either by a timer, or by calling cpu_generate_nmi)
 				if (cpu->pending_nmi_count != 0)
-				{
+				{//printf("%s %d \n", __FUNCTION__,__LINE__);
 					g_game->do_nmi();
-					nmi_asserted = true;
+					nmi_asserted = true;//printf("%s %d \n", __FUNCTION__,__LINE__);
 					--cpu->pending_nmi_count;
 				}
 
@@ -628,12 +667,13 @@ void cpu_execute()
 			} // end while looping through each cpu
 		} // end for loop
 
+
 		// 1 ms has elapsed, so notify the LDP to keep it in sync (we must do this after every ms)
 		g_ldp->pre_think();
- 
+
 		// Update the sound buffers for the sound chips
 		update_soundbuffer();
-
+	
 		// BEGIN FORCING EMULATOR TO RUN AT PROPER SPEED
 
 		// we have executed 1 ms worth of cpu cycles before this point, so slow down if 1 ms has not passed
@@ -652,7 +692,7 @@ void cpu_execute()
 		else
 		{
 			g_uCPUMsBehind = 0;
-
+#if 1
 			// if not enough time has elapsed, slow down
 			while (g_expected_elapsed_ms > actual_elapsed_ms)
 			{
@@ -663,6 +703,7 @@ void cpu_execute()
 #endif
 				actual_elapsed_ms = elapsed_ms_time(g_cpu_timer);
 			}
+			#endif
 		}
 
 #ifdef CPU_DIAG
@@ -679,9 +720,11 @@ void cpu_execute()
 		// cpu at this point.  That would be more accurate.
 		assert(!g_cpu_paused);
 #endif
-#if 1
-		do
+	#if LIBRETRO
+
+		do			
 		{
+		#endif
 			// limit checks for input events to every 16 ms
 			//(this is really expensive in Windows for some reason)
 			actual_elapsed_ms = elapsed_ms_time(last_inputcheck);
@@ -709,16 +752,19 @@ void cpu_execute()
 				}			
 #endif
 			}
+			#if LIBRETRO
 
 			// be nice to cpu if we're looping here ...
 			if (g_cpu_paused)
 			{
 				make_delay(1);
 			}
-
+			
 		} while (g_cpu_paused && !get_quitflag());	// the only time this should loop is if the user pauses the game
-#endif
+		#endif
 	} // end while quitflag is not true
+//	printf("%s %d \n", __FUNCTION__,__LINE__);
+return 0;
 }
 
 // sets the PC on all cpu's to their initial PC values.
@@ -727,7 +773,7 @@ void cpu_execute()
 void cpu_reset()
 {
 	struct cpudef *cpu = g_head;
-	
+	//printf("%s %d cpu\n", __FUNCTION__,__LINE__);
 	// reset each cpu
 	while (cpu)
 	{

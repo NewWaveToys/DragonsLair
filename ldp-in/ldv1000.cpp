@@ -441,7 +441,7 @@ void write_ldv1000 (unsigned char value)
 void pre_display_disable()
 {
 
-	printline("Display disable received");
+	printline("ldv Display disable received");
 
 }
 

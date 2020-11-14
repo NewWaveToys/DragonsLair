@@ -49,8 +49,11 @@
 #include "../sound/sound.h"
 #include "../cpu/cpu.h"
 #include "../cpu/generic_z80.h"
-
+#include "../scoreboard/overlay_scoreboard.h"
+	#ifdef LIBRETRO
+#include "../libretro/libretro.h"
 //////////////////////////////////////////////////////////////////////////
+#endif
 
 // lair class constructor (default the rev F2 roms)
 lair::lair() :
@@ -62,8 +65,6 @@ m_swith_ch(true)
 	memset(m_cpumem, 0, CPU_MEM_SIZE);
 	m_switchA = 0x22;
 	m_switchB = 0xD8;
-	//m_switchB = m_switchB & 0xfc;
-	m_switchB = m_switchB | 0x02;
 	m_joyskill_val = 0xFF;	// all input cleared
 	m_misc_val = 0x7F;	// bit 7 and 6 alternated, and bits 0-3 all set (bits 4-5 are unused)
 
@@ -113,6 +114,9 @@ m_swith_ch(true)
 	};
 
 	m_rom_list = lair_roms;
+	
+	m_nvram_size =0;
+	m_nvram_begin = NULL;
 
 }
 
@@ -557,7 +561,8 @@ void lair::do_nmi()
 	}
 
 }
-
+extern char need_retset;
+extern int skipframes;
 void lair::cpu_mem_write(Uint16 Addr, Uint8 Value)
 // Called whenever the Z80 emulator wants to write to memory
 {
@@ -582,8 +587,15 @@ void lair::cpu_mem_write(Uint16 Addr, Uint8 Value)
 
 					if (m_prefer_samples)
 					{
+						if(m_cpumem[index+1] == 0xD5)
+							if(need_retset)
+							{
+								skipframes = 8;
+								need_retset = 0;
+								
+							}
 						// only the 'accept' sound data has a D5 as the second byte
-						if (m_cpumem[index+1] == 0xD5)
+						if ((m_cpumem[index+1] == 0xD5)&&m_joystick_sound)//joystick sound
 						{
 							sound_play(S_DL_ACCEPT);
 						}
@@ -600,7 +612,7 @@ void lair::cpu_mem_write(Uint16 Addr, Uint8 Value)
 						// else unknown sound, play an error
 						else
 						{
-							printline("WARNING : Unknown dragon's lair sound!");
+							//printline("WARNING : Unknown dragon's lair sound!");
 						}
 					}
 				}
@@ -617,6 +629,8 @@ void lair::cpu_mem_write(Uint16 Addr, Uint8 Value)
 			{
 				// real sound chip data is sent here
 			case 0xE000:
+			//	printf("m_soundchip_address_latch %d Value %d m_soundchip_id %d \n",m_soundchip_address_latch, Value,
+			//		m_soundchip_id);
 				if (!m_prefer_samples&&m_joystick_sound)
 					audio_write_ctrl_data(m_soundchip_address_latch, Value, m_soundchip_id);
 				break;
@@ -638,6 +652,7 @@ void lair::cpu_mem_write(Uint16 Addr, Uint8 Value)
 					break;
 				case 0x0F:
 					// read dip-switch 2 and put result at 0xC000
+					//printf("%s %d %x ", __FUNCTION__,__LINE__,m_cpumem[0xC000] );
 					m_cpumem[0xC000] = m_switchB;
 					break;
 				default:
@@ -652,7 +667,7 @@ void lair::cpu_mem_write(Uint16 Addr, Uint8 Value)
 					write_pr7820(Value);
 				}
 				else
-				{
+				{//printf("%s %d ", __FUNCTION__,__LINE__);
 					write_ldv1000(Value);
 				}
 				break;
@@ -686,8 +701,10 @@ void lair::cpu_mem_write(Uint16 Addr, Uint8 Value)
 				// else do something with the LED's
 				else
 				{
+				#if 0
 					if (Addr == 0xE03B) change_led(false, false, true);	// ACE SKILL
 					else if (Addr == 0xE03D) change_led(false, true, false);	// CAPTAIN SKILL
+#endif
 				}
 				break;
 
@@ -699,8 +716,10 @@ void lair::cpu_mem_write(Uint16 Addr, Uint8 Value)
 				}
 				else
 				{
+				#if 0
 					// show cadet skill LED
 					change_led(true, false, false);
+				#endif
 				}
 				break;
 				// lives of player 2
@@ -780,13 +799,15 @@ Uint8 lair::cpu_mem_read(Uint16 Addr)
 		case 0xC020:
 			result = read_ldv1000();
 			break;
-	/*	case 0xC000:
+			#if 0
+		case 0xC000:
 			if(m_swith_ch)
 			{m_swith_ch=false;
 				result = m_switchB;
 			}else result = m_switchA;
 			//result = m_cpumem[Addr];
-			break;*/
+			break;
+			#endif
 		default:
 			result = m_cpumem[Addr];
 			break;
@@ -807,12 +828,13 @@ bool lair::init()
 	bool bResult = true;
 
 	cpu_init();
-
+#if 0
 	IScoreboard *pScoreboard = ScoreboardCollection::GetInstance(m_pLogger,
 		lair_get_active_overlay,
 		false,	// we aren't thayer's quest
 		m_bUseAnnunciator,
 		get_scoreboard_port());
+
 
 	if (pScoreboard)
 	{
@@ -839,6 +861,10 @@ bool lair::init()
 	{
 		bResult = false;
 	}
+	#else
+	m_pScoreboard = OverlayScoreboard::GetInstance(NULL, false);
+	m_pScoreboard->Reset();
+	#endif
 
 	return bResult;
 }
@@ -865,6 +891,7 @@ void lair::init_overlay_scoreboard()
 
 void lair::palette_calculate()
 {
+#if !(USE_DRM |LIBRETRO)
 	SDL_Color temp_color;
 
 	// fill color palette with sensible grey defaults
@@ -876,6 +903,7 @@ void lair::palette_calculate()
 
 		palette_set_color(i, temp_color);
 	}
+	#endif
 }
 
 // frees any images we loaded in, etc
@@ -894,6 +922,7 @@ void lair::shutdown()
 // redraws the scoreboard on the screen
 void lair::video_repaint()
 {
+#if 0
 	// if there is an overlay (for overlay scoreboard)
 	if (m_video_overlay[m_active_video_overlay])
 	{
@@ -932,10 +961,15 @@ void lair::video_repaint()
 			}
 		} // end if dimensions are incorrect
 	}
-
+#endif
 	// we invalidate to force a repaint, because this function should _always_ repaint
 	m_pScoreboard->Invalidate();
 	m_pScoreboard->RepaintIfNeeded();
+}
+void lair::reset()
+{printf("%s = =\n",__FUNCTION__);
+	cpu_reset();
+	m_pScoreboard->Reset();
 }
 
 // basically 'preset' is a macro to set a bunch of other options; useful as a good shortcut
@@ -973,7 +1007,146 @@ bool lair::set_bank(unsigned char which_bank, unsigned char value)
 
 	return result;
 }
+#if LIBRETRO
+extern int game_ispause;
+extern int game_isresume;
+extern int skipcount;
+extern void game_thread_unlock();
+#include <unistd.h>
 
+int vail_sound = 0;
+#endif
+int lair::getLives()
+{
+	unsigned int val;
+	int ret=0;
+	
+	m_pScoreboard->pre_get_digit(val, IScoreboard::LIVES0);
+	//printf("val %d \n", val);
+	if(val >0&&val!=15){ ret =1;vail_sound=500;}
+	m_pScoreboard->pre_get_digit(val, IScoreboard::LIVES1);
+	//
+	if(val >0&&val!=15){ ret=1;vail_sound=500;}
+	if(vail_sound>0){vail_sound--;ret=1;}
+	//printf("val %d ==\n", val);
+return ret;
+}
+
+void lair::setbank(unsigned int i, const char* c)
+{
+
+	switch (c[0])
+	{
+	#if 1
+		case '0'://JOYSTICK SOUND
+			switch(i)
+			{
+				case 0:
+					m_joystick_sound = false;
+					//m_switchB = m_switchB & (~0x08);
+					break;
+				case 1:
+					m_joystick_sound = true;
+					//m_switchB = m_switchB | 0x08;
+					break;
+			}
+			break;
+		case '1'://NUMBER OF DIRKS PER CREDIT AND LENGTH OF PLAY
+			switch(i)
+			{
+				case 0:// 3  dirks 
+					m_switchA = m_switchA & 0xdf;
+					m_switchB = m_switchB & 0xfb;
+					break;
+				case 1://5 dirks
+					m_switchA = m_switchA | 0x20;
+					m_switchB = m_switchB & 0xfb;
+					break;
+				case 2://unlimit
+					m_switchB = m_switchB | 0x04;
+					break;
+			}
+			//game_reset();
+			//m_swith_ch =true;
+			printf("%s %d i %d  m_switchB %x %x\n",__FUNCTION__,__LINE__,i, m_switchB,m_switchA);
+			break;
+		case '2'://GAME DIFFICULTY LEVELS
+			switch(i)
+			{
+#if 0
+				case 0://easy
+					m_switchB = m_switchB | 0x80;
+					break;
+				case 1://mid		
+					m_switchA = m_switchA & 0xfb;
+					m_switchB = m_switchB & 0x6f;
+					break;
+				case 2://hard
+					m_switchA = m_switchA | 0x04;
+					m_switchB = m_switchB & 0x6f;
+					break;
+#endif
+				case 0://easy
+                                        m_switchB = m_switchB | 0x80;
+                                        break;
+                                case 2://mid
+                                        m_switchA = m_switchA | 0x06;
+                                        m_switchB = m_switchB & 0x7f;
+                                        break;
+                                case 1://hard
+                                        m_switchA = m_switchA & 0xfd;
+                                        m_switchB = m_switchB & 0x7f;
+                                        break;
+			}
+			//game_reset();
+			//m_swith_ch = true;
+			//printf("%s %d i %d  m_switchB %x %x\n",__FUNCTION__,__LINE__,i, m_switchB,m_switchA);
+			break;
+			#endif
+		case '3'://ATTRACT MODE SOUND
+			/*switch(i)
+			{
+				case 0:
+					m_switchB = m_switchB | 0x02;
+				//	m_switchB = m_switchB & (~0x01);
+				//	
+					break;
+				case 1:
+					m_switchB = m_switchB & 0xfc;
+				//	m_switchB = m_switchB | 0x01;
+					break;
+			}*/
+			//printf("%s %d i %d  m_switchB %x\n",__FUNCTION__,__LINE__,i, m_switchB);
+			//game_reset();
+			break;
+		case '4'://game run status
+			switch(i)
+			{
+				case 0:
+					#if LIBRETRO
+					//game_ispause=0;
+					game_isresume = 1;
+					//game_thread_unlock();
+					#endif
+					printf(" g_cpu_resume \n");
+					//input_pause(false);//run game
+					break;
+				case 1:
+					#if LIBRETRO
+					game_ispause = 1;
+					game_isresume = 0;
+					skipcount = 15;
+					//usleep(100);
+					#endif
+					printf(" g_cpu_paused \n");
+					input_pause(true);//pause game
+					break;
+			}
+	
+	}
+
+	//printf("m_switchA = %x m_switchB = %x \n", m_switchA, m_switchB);
+}
 bool ace::handle_cmdline_arg(const char *arg)
 {
 	bool bRes = false;
@@ -1053,9 +1226,10 @@ void lair::input_enable(Uint8 move)
 		m_joyskill_val &= (unsigned char) ~0x10;	// clear bit 4
 		break;
 	case SWITCH_BUTTON3:
-		m_bScoreboardVisibility = !m_bScoreboardVisibility;
+	printf("%s = %d \n",__FUNCTION__,__LINE__);
+/*		m_bScoreboardVisibility = !m_bScoreboardVisibility;
 		m_pScoreboard->ChangeVisibility(m_bScoreboardVisibility);
-		m_video_overlay_needs_update |= m_pScoreboard->is_repaint_needed();
+		m_video_overlay_needs_update |= m_pScoreboard->is_repaint_needed();*/
 		break;
 	case SWITCH_COIN1: 
 		m_misc_val &= (unsigned char) ~0x04;	
@@ -1075,8 +1249,6 @@ void lair::input_enable(Uint8 move)
 	case SWITCH_SERVICE:
 		if (m_game_type == GAME_LAIR)
 		{
-			//m_switchB = m_switchB | 0x04;
-		//	m_cpumem[0xC000] = m_switchB;
 			m_switchA ^= 0x80;	// toggle diagnostics switch (to start/stop diagnostics)
 		}
 		else if (m_game_type == GAME_ACE)
@@ -1170,4 +1342,58 @@ void lair::OnLDV1000LineChange(bool bIsStatus, bool bIsEnabled)
 		}
 	}
 }
+#ifdef LIBRETRO
+unsigned lair::get_libretro_button_map(unsigned id)
+{
+   switch (id)
+   {
+      case RETRO_DEVICE_ID_JOYPAD_SELECT:
+         return SWITCH_COIN1; /*Player Coin */
+      case RETRO_DEVICE_ID_JOYPAD_START:
+         return SWITCH_START1; /*Player Start */
+      //case RETRO_DEVICE_ID_JOYPAD_Y:
+      case RETRO_DEVICE_ID_JOYPAD_A:
+	  case RETRO_DEVICE_ID_JOYPAD_B:
+         return SWITCH_BUTTON1; /* Sword */
+      case RETRO_DEVICE_ID_JOYPAD_X:
+         return SWITCH_BUTTON3; /* Score Toggle */
+      case RETRO_DEVICE_ID_JOYPAD_UP:
+         return SWITCH_UP; /* Up */
+      case RETRO_DEVICE_ID_JOYPAD_DOWN:
+         return SWITCH_DOWN; /* Down */
+      case RETRO_DEVICE_ID_JOYPAD_LEFT:
+         return SWITCH_LEFT; /* Left */
+      case RETRO_DEVICE_ID_JOYPAD_RIGHT:
+         return SWITCH_RIGHT; /* Right */		 
+	  case RETRO_DEVICE_ID_JOYPAD_R3:
+		 return SWITCH_START2;
+   }
+   return SWITCH_NOTHING;
+}
 
+const char *lair::get_libretro_button_name(unsigned id)
+{
+   switch (id)
+   {
+      case RETRO_DEVICE_ID_JOYPAD_SELECT:
+         return "Coin Insert";
+      case RETRO_DEVICE_ID_JOYPAD_START:
+         return "Start";
+      //case RETRO_DEVICE_ID_JOYPAD_Y:
+	  case RETRO_DEVICE_ID_JOYPAD_A:
+	  case RETRO_DEVICE_ID_JOYPAD_B:
+         return "Sword";
+      case RETRO_DEVICE_ID_JOYPAD_X:
+         return "Score Toggle";
+      case RETRO_DEVICE_ID_JOYPAD_UP:
+         return "Up";
+      case RETRO_DEVICE_ID_JOYPAD_DOWN:
+         return "Down";
+      case RETRO_DEVICE_ID_JOYPAD_LEFT:
+         return "Left";
+      case RETRO_DEVICE_ID_JOYPAD_RIGHT:
+         return "Right";
+   }
+   return "N/A";
+}
+#endif

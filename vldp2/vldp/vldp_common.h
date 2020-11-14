@@ -72,6 +72,6 @@ int idle_handler(void *);
 
 // how ms to wait for responses from the private thread before we give up and return an error
 // NOTE : increased from 5000 now that artificial seek delay functionality is added
-#define VLDP_TIMEOUT	7500
+#define VLDP_TIMEOUT	2500//7500
 
 #endif

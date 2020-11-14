@@ -48,15 +48,23 @@ public:
 	void OnVblank();
 	void OnLDV1000LineChange(bool bIsStatus, bool bIsEnabled);
 	void video_repaint();
+	#ifdef LIBRETRO
+   unsigned get_libretro_button_map(unsigned id);
+   const char *get_libretro_button_name(unsigned id);
+   #endif
     void init_overlay_scoreboard();
 	void palette_calculate();
 	void set_preset(int);
 	bool set_bank(unsigned char, unsigned char);
+	void setbank(unsigned int i, const char* c);
 	void set_version(int);
 
 	// what follows are functions specific to this class
 	Uint8 read_C010();
 	void patch_roms();
+
+	void reset();
+	int getLives();
 
 protected:
    Uint8 m_soundchip_id;

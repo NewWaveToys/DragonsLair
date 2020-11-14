@@ -31,6 +31,10 @@ public:
 	ffr();
 	void start();
 	void set_preset(int iPreset);
+	#ifdef LIBRETRO
+   unsigned get_libretro_button_map(unsigned id);
+   const char *get_libretro_button_name(unsigned id);
+   #endif
 private:
 	void think();
 	

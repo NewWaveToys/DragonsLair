@@ -1,4 +1,5 @@
 #include "scoreboard_interface.h"
+#include <stdio.h>
 
 void IScoreboard::PreDeleteInstance()
 {
@@ -192,3 +193,18 @@ bool IScoreboard::Clear()
 
 	return bRes;
 }
+
+void IScoreboard::Reset()
+{printf("%s led reset \n",__FUNCTION__);
+	update_player_lives(0, 0);
+	update_player_lives(0, 1);
+	update_credits(0, 0);
+	update_credits( 1, 0);
+	int i=0;
+	for(i=0;i<6;i++)
+	update_player_score(i, 0, 0);
+	for(i=0;i<6;i++)
+	update_player_score(i, 0, 1);
+	RepaintIfNeeded();
+}
+

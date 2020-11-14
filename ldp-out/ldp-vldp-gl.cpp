@@ -3,6 +3,7 @@
 
 #ifdef MAC_OSX
 #include <glew.h>
+
 #else
 #include <GL/glew.h>
 #endif
@@ -103,7 +104,7 @@ unsigned int g_uVblankCountOld = 0;
 // This number logically only needs to be 2 but performs much better as 4 :)
 #define YUV_BUF_COUNT 4
 
-static unsigned char *g_ptr[YUV_BUF_COUNT][3];
+unsigned char *g_ptr[YUV_BUF_COUNT][3];
 
 // Macros to lock and unlock the mutex to make sure two threads aren't accessing shared vars at the same time
 #define VLDP_GL_LOCK	SDL_mutexP(g_vldp_gl_mutex)
@@ -179,9 +180,9 @@ void ldp_vldp_gl_blend_y(Uint8 *g_ptrY)
 void draw_prepared_frame(SDL_Surface *gamevid)
 {
 	int w_half = g_uVidWidth >> 1, h_half = g_uVidHeight >> 1;
-	static int count = 0;
+
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-	
+
 	// if this isn't supposed to be a blank frame
 	if (!g_bBlankRequested)
 	{
@@ -196,6 +197,8 @@ void draw_prepared_frame(SDL_Surface *gamevid)
 		glBindTexture(GL_TEXTURE_2D,g_textureYUVIDs[g_uCurTextureArray][TEX_V]);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D,g_textureYUVIDs[g_uCurTextureArray][TEX_Y]);
+		
+#ifndef HAVE_OPENGLES2
 
 		// draw the textured rectangle
 		glBegin(GL_QUADS);
@@ -204,18 +207,14 @@ void draw_prepared_frame(SDL_Surface *gamevid)
 		glTexCoord2f(1, 0); glVertex3i(w_half, h_half, 0);
 		glTexCoord2f(0, 0); glVertex3i(-w_half, h_half, 0);
 		glEnd();
-
+#endif
 		glUseProgram(0);	// stop using fragment shader
 	} // end if it's not supposed to be a blank frame
 	// else the frame is supposed to be blank, so we don't draw the VLDP frame
 	else
 	{
-		if (count < 13)count++;
 		// we've done our duty and blanked...
-		if (count >= 13){
-			count = 0;
-			g_bBlankRequested = false;
-		}
+		g_bBlankRequested = false;
 	}
 
 	// STEP 2: Display 8-bit video overlay (if it exists)
@@ -238,7 +237,7 @@ void draw_prepared_frame(SDL_Surface *gamevid)
 		glBindTexture(GL_TEXTURE_2D, g_textureIDs[TEX_VID_OVERLAY]);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, gamevid->w, gamevid->h,
 			0, GL_LUMINANCE, GL_UNSIGNED_BYTE, gamevid->pixels);
-
+#ifndef HAVE_OPENGLES2
 		glPushMatrix();
 
 		// take vertical offset into account
@@ -270,7 +269,7 @@ void draw_prepared_frame(SDL_Surface *gamevid)
 		glTexCoord2f(0, 0); glVertex3i(-w_half, iY, 1);	// top left
 		glEnd();
 		glPopMatrix();
-
+#endif
 		// stop using fragment program
 		glUseProgram(0);
 
@@ -311,12 +310,14 @@ void draw_prepared_frame(SDL_Surface *gamevid)
 	if (g_filter_type & FILTER_SCANLINES)
 	{
 		glBindTexture(GL_TEXTURE_2D, g_textureIDs[TEX_SCANLINES]);
+	#ifndef	HAVE_OPENGLES2
 		glBegin(GL_QUADS);
 		glTexCoord2i(0, g_uVidHeight >> 1);	glVertex3i(-w_half, -h_half, 2);
 		glTexCoord2i(1, g_uVidHeight >> 1); glVertex3i(w_half, -h_half, 2);
 		glTexCoord2i(1, 0); glVertex3i(w_half, h_half, 2);
 		glTexCoord2i(0, 0); glVertex3i(-w_half, h_half, 2);
 		glEnd();
+		#endif
 	}
 }
 
@@ -574,7 +575,9 @@ bool init_vldp_opengl()
 			glTexParameteri(uTarget, GL_TEXTURE_WRAP_T, uParam);
 			glTexParameteri(uTarget, GL_TEXTURE_MAG_FILTER, uType);
 			glTexParameteri(uTarget, GL_TEXTURE_MIN_FILTER, uType);
+			#ifndef HAVE_OPENGLES2
 			glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+			#endif
 		}
 
 		// setup YUV texture parameters
@@ -591,7 +594,9 @@ bool init_vldp_opengl()
 				glTexParameteri(uTarget, GL_TEXTURE_WRAP_T, uParam);
 				glTexParameteri(uTarget, GL_TEXTURE_MAG_FILTER, uType);
 				glTexParameteri(uTarget, GL_TEXTURE_MIN_FILTER, uType);
+				#ifndef HAVE_OPENGLES2
 				glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+				#endif
 			}
 		}
 
@@ -673,8 +678,14 @@ void on_palette_change_gl()
 //		glBindTexture(GL_TEXTURE_1D, g_textureIDs[TEX_VID_PALETTE]);
 
 		// apply modified palette to palette texture
+		#ifdef HAVE_OPENGLES2
+		glTexImage2D(GL_TEXTURE_1D, 0, GL_RGBA, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+			GL_UNSIGNED_SHORT_4_4_4_4,
+			g_uRGBAPalette);
+		#else
 		glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE,
 			g_uRGBAPalette);
+		#endif
 	}
 	// else we're not initialized, so there's nothing we can do ...
 }

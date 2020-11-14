@@ -31,6 +31,7 @@ public:
 	// This must be called when you're done using the scoreboard.
 	void PreDeleteInstance();
 
+	 void Reset();
 	// Notifies the scoreboard that it has been clobbered and needs to repainted even
 	//  if nothing has changed.
 	// This is mostly used for when we hide the console and need to redraw the image-based

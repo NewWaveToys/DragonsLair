@@ -35,6 +35,8 @@
 #include "../ldp-out/ldp.h"
 #include "fileparse.h"
 
+#include "keydef.h"
+
 #ifdef UNIX
 #include <fcntl.h>	// for non-blocking i/o
 #endif
@@ -56,7 +58,7 @@ bool g_consoledown = false;			// whether the console is down or not
 bool g_alt_pressed = false;	// whether the ALT key is presssed (for ALT-Enter combo)
 unsigned int idle_timer; // added by JFA for -idleexit
 
-const double STICKY_COIN_SECONDS = 0.125;	// how many seconds a coin acceptor is forced to be "depressed" and how many seconds it is forced to be "released"
+const double STICKY_COIN_SECONDS =0.001;// 0.125;	// how many seconds a coin acceptor is forced to be "depressed" and how many seconds it is forced to be "released"
 Uint32 g_sticky_coin_cycles = 0;	// STICKY_COIN_SECONDS * get_cpu_hz(0), cannot be calculated statically
 queue<struct coin_input> g_coin_queue;	// keeps track of coin input to guarantee that coins don't get missed if the cpu is busy (during seeks for example)
 Uint64 g_last_coin_cycle_used = 0;	// the cycle value that our last coin press used
@@ -87,9 +89,9 @@ int g_key_defs[SWITCH_COUNT][2] =
 	{ SDLK_LSHIFT,	0 }, // action button 3
 	{ SDLK_5, SDLK_c }, // coin chute left
 	{ SDLK_6, 0 }, // coin chute right
-	{ SDLK_KP_DIVIDE, SDLK_F6 }, // skill easy
-	{ SDLK_KP_MULTIPLY, SDLK_F7 },	// skill medium
-	{ SDLK_KP_MINUS, SDLK_F8 },	// skill hard
+	{ SDLK_KP_DIVIDE, 0 }, // skill easy
+	{ SDLK_KP_MULTIPLY, 0 },	// skill medium
+	{ SDLK_KP_MINUS, 0 },	// skill hard
 	{ SDLK_9, 0 }, // service coin
 	{ SDLK_F2, 0 },	// test mode
 	{ SDLK_F3, 0 },	// reset cpu
@@ -106,16 +108,16 @@ int g_key_defs[SWITCH_COUNT][2] =
 // added by Russ
 // global button mapping array. just hardcoded room for 10 buttons max
 int joystick_buttons_map[10] = {
-	SWITCH_UP,//SWITCH_BUTTON1,	// button 1
-	SWITCH_LEFT,//SWITCH_BUTTON2,	// button 2
-	SWITCH_DOWN,//SWITCH_BUTTON3,	// button 3
-	SWITCH_RIGHT,//SWITCH_BUTTON1,	// button 4
+	SWITCH_BUTTON1,	// button 1
+	SWITCH_BUTTON2,	// button 2
+	SWITCH_BUTTON3,	// button 3
+	SWITCH_BUTTON1,	// button 4
 	SWITCH_COIN1,		// button 5
 	SWITCH_START1,		// button 6
 	SWITCH_BUTTON1,	// button 7
-	SWITCH_BUTTON2,	// button 8
-	SWITCH_BUTTON3,	// button 9
-	SWITCH_CONSOLE,	// button 10
+	SWITCH_BUTTON1,	// button 8
+	SWITCH_BUTTON1,	// button 9
+	SWITCH_BUTTON1,	// button 10
 };
 #else
 // button mapping for gp2x
@@ -258,7 +260,116 @@ void CFG_Keys()
 		mpo_close(io);
 	} // end if file was opened successfully
 }
+#include <linux/input.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 
+unsigned int keycode=0;
+unsigned int keystate=0;
+
+
+
+
+int key_fd=-1;
+//fd_set key_rdfs;
+//struct input_event events[64];
+void process_keycode();
+
+void set_keycode(unsigned int keyval, int state)
+{
+	if(state)keycode |= keyval;
+	else keycode &= ~keyval;
+}
+extern "C"
+{
+void game_setkey(unsigned short code, int value)
+{
+		switch(code)
+		{
+			case 103:
+				set_keycode(UP_KEY, value);
+				break;
+			case 105:
+				set_keycode(LEFT_KEY, value);
+				break;
+			case 106:
+				set_keycode(RIGHT_KEY, value);
+				break;
+			case 108:
+				set_keycode(DOWN_KEY, value);
+				break;
+
+			case 54:
+				set_keycode(COIN1_KEY, value);
+				break;
+			case 107:
+				//set_keycode(COIN2_KEY, value);
+				break;
+
+			case 28:
+				set_keycode(START1_KEY, value);
+				break;
+			case 80:
+				set_keycode(START2_KEY, value);
+				break;
+
+			case 30:
+				set_keycode(BUTTON1_KEY, value);
+				break;
+			case 48:
+				set_keycode(BUTTON1_KEY, value);
+				break;
+			case 109:
+				printf("%s pause \n",__FUNCTION__);
+				g_game->game_pause();
+				
+				break;
+			case 110:
+				printf("%s resume \n",__FUNCTION__);
+				g_game->game_resume();
+				break;
+		}
+}
+
+}
+
+#if 0
+int rekey_handler(void *p)
+{
+	key_fd = open("/dev/input/event1", O_RDONLY);
+		FD_ZERO(&key_rdfs);
+	FD_SET(key_fd, &key_rdfs);
+	fcntl(key_fd, F_SETFL, O_NONBLOCK);
+	while(key_fd>0)
+		{
+		select(key_fd + 1, &key_rdfs, NULL, NULL, NULL);
+      	int i;
+		
+		int	len = read(key_fd, events, sizeof(events));
+      		printf("le n %d \n", len);
+			if(len >= (int) sizeof(struct input_event))
+			{
+			
+	         len /= sizeof(*events);
+	         for (i = 0; i < len; i++)
+	         {
+	            uint16_t type = events[i].type;
+	            uint16_t code = events[i].code;
+	            uint32_t value = events[i].value;
+				printf("type %d =%d =%d \n", type,code , value);
+				if((EV_KEY ==type)&&(0==value || 1==value))
+				{
+					
+					
+				}
+	         }
+			}
+		}
+
+}
+#endif
 int SDL_input_init()
 // initializes the keyboard (and joystick if one is present)
 // returns 1 if successful, 0 on error
@@ -273,7 +384,7 @@ int SDL_input_init()
 		g_coin_queue.pop();
 	}
 	g_sticky_coin_cycles = (Uint32) (STICKY_COIN_SECONDS * get_cpu_hz(0));	// only needs to be calculated once
-
+#if 0
 	if (SDL_InitSubSystem(SDL_INIT_JOYSTICK) >= 0)
 	{
 		// if joystick usage is enabled
@@ -310,26 +421,34 @@ int SDL_input_init()
 	{
 		printline("Input initialization failed!");
 	}
-
+	#else
+//	if(key_fd<0)
+		{
+		//SDL_CreateThread(rekey_handler, NULL);
+		
+	result = 1;
+		}
+#endif
 	idle_timer = refresh_ms_time(); // added by JFA for -idleexit
 
 #ifdef UNIX
 	// enable non-blocking stdin (see conin.cpp UNIX stdin stuff)
-	/*int iRes =*/ fcntl(fileno(stdin), F_SETFL, O_NONBLOCK);
+	/*int iRes =*/ //fcntl(fileno(stdin), F_SETFL, O_NONBLOCK);
 #endif
 
 	// if the mouse is disabled, then filter mouse events out ...
-	if (!g_game->getMouseEnabled())
+/*	if (!g_game->getMouseEnabled())
 	{
 		FilterMouseEvents(true);
 	}
-
+*/
 	return(result);
 
 }
 
 void FilterMouseEvents(bool bFilteredOut)
 {
+#if 0
 	int iState = SDL_ENABLE;
 
 	if (bFilteredOut)
@@ -340,25 +459,28 @@ void FilterMouseEvents(bool bFilteredOut)
 	SDL_EventState(SDL_MOUSEMOTION, iState);
 	SDL_EventState(SDL_MOUSEBUTTONDOWN, iState);
 	SDL_EventState(SDL_MOUSEBUTTONUP, iState);
+	#endif
 }
 
 // does any shutting down necessary
 // 1 = success, 0 = failure
 int SDL_input_shutdown(void)
 {
-	SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
+	//SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
 	return(1);
 }
+
 
 // checks to see if there is incoming input, and acts on it
 void SDL_check_input()
 {
+	#if 0
 
 	SDL_Event event;
 
 	while ((SDL_PollEvent (&event)) && (!get_quitflag()))
 	{
-		printf("%s = %d ==%d \n", __FUNCTION__, event.key.keysym.sym, event.type);
+	printf("%s = %d ==%d \n",__FUNCTION__, event.key.keysym.sym,event.type);
 		// if they press the tilda key to bring down the console
 		// this is somewhat of a hacked if statement but I can't see
 		// a better way based on the SDL_Console API ...
@@ -383,10 +505,15 @@ void SDL_check_input()
 			process_event(&event);
 		}
 	}
+	#else
+		process_keycode();
+	#endif
+	#if !(USE_DRM|LIBRETRO)
 	check_console_refresh();
 
 	// added by JFA for -idleexit
 	if (get_idleexit() > 0 && elapsed_ms_time(idle_timer) > get_idleexit()) set_quitflag();
+	#endif
 
 	// if the coin queue has something entered into it
 	if (!g_coin_queue.empty())
@@ -416,6 +543,20 @@ void SDL_check_input()
 	// else the coin queue is empty, so we needn't do anything ...
 
 }
+bool input_pause(bool fPause)
+{
+	bool fCurrentState = g_game->get_game_paused();
+
+	if (fPause != fCurrentState)
+	{
+		// Pause is only supported when LDP is PLAYING.  Sometimes it can take a second to
+		//  go from one state back to PLAYING state.
+		input_enable(SWITCH_PAUSE);
+		if (g_game->get_game_paused() == fCurrentState) return false;
+	}
+
+	return true;
+}
 
 #ifdef CPU_DEBUG
 void toggle_console()
@@ -438,7 +579,43 @@ void toggle_console()
 	}
 }
 #endif
+#if 1
+void process_keystate(int swkey, int kcode)
+{
+	if(kcode&keycode)
+		{
+			if(!(keystate&kcode))
+			{
+				reset_idle();
+				keystate |=kcode;
+				input_enable(swkey);
+			}
+		}
+		else if(keystate&kcode)
+		{
+			keystate &=~kcode;
+			reset_idle();
+			input_disable(swkey);
+		}
+}
+void process_keycode()
+{
+	process_keystate(SWITCH_UP, UP_KEY);
+	process_keystate(SWITCH_DOWN, DOWN_KEY);
+	process_keystate(SWITCH_LEFT, LEFT_KEY);
+	process_keystate(SWITCH_RIGHT, RIGHT_KEY);
 
+	process_keystate(SWITCH_START1, START1_KEY);
+	process_keystate(SWITCH_START2, START2_KEY);
+
+	process_keystate(SWITCH_COIN1, COIN1_KEY);
+	process_keystate(SWITCH_COIN2, COIN2_KEY);
+
+	process_keystate(SWITCH_BUTTON1, BUTTON1_KEY);
+	process_keystate(SWITCH_BUTTON1, BUTTON1_KEY);
+	
+}
+#else
 // processes incoming input
 void process_event(SDL_Event *event)
 {
@@ -719,6 +896,7 @@ void process_joystick_hat_motion(SDL_Event *event)
 
 	prev_hat_position = event->jhat.value;
 }
+#endif
 
 // functions to help us avoid 'extern' statements
 bool get_consoledown()
@@ -742,8 +920,12 @@ void check_console_refresh()
 	{
 		if (elapsed_ms_time(console_refresh) > refresh_every)
 		{
+			#if USE_DRM |LIBRETRO
+			#else
 			DrawConsole();
+			
 			vid_blit(get_screen_blitter(), 0, 0);
+			#endif
 			vid_flip();
 			console_refresh = refresh_ms_time();
 		}

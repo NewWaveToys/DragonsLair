@@ -107,6 +107,8 @@ static unsigned int g_header_buf_size = 0;	// size of the header buffer
 #define PLAY_FRAME_STALL 1
 
 ////////////////////////////////////////////////
+extern char g_cpu_paused;
+extern int game_ispause;
 
 // this is our video thread which gets called
 int idle_handler(void *surface)
@@ -128,6 +130,7 @@ int idle_handler(void *surface)
 	// and listen for orders from the parent thread
 	while (!done)
 	{		
+		//if(game_ispause/*checksound()*/){SDL_Delay(16);continue;}
 		// while we have received new commands to be processed
 		// (so we don't go to sleep on skips)
 		while (ivldp_got_new_command() && !done)
@@ -197,7 +200,7 @@ int idle_handler(void *surface)
 	{
 		--s_uPreCacheIdxCount;
 		free(s_sPreCacheEntries[s_uPreCacheIdxCount].ptrBuf);
-		s_sPreCacheEntries[s_uPreCacheIdxCount].ptrBuf = NULL;
+	s_sPreCacheEntries[s_uPreCacheIdxCount].ptrBuf = NULL;
 		s_sPreCacheEntries[s_uPreCacheIdxCount].uLength = 0;
 	}
 	
@@ -240,7 +243,6 @@ int idle_handler(void *surface)
 	memset(g_buffer, 0, BUFFER_SIZE*sizeof(Uint8));
 	memset(g_header_buf, 0, HEADER_BUF_SIZE*sizeof(Uint8));
 	 g_header_buf_size = 0;	// size of the header buffer
-
 	return 0;
 }
 
@@ -500,7 +502,6 @@ static void decode_mpeg2 (uint8_t * current, uint8_t * end)
 		    {
 				s_video_output->draw (s_video_output, info->display_fbuf->buf,
 				      info->display_fbuf->id);
-
 		    }
 		    
 		    break;

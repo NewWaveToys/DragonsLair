@@ -16,10 +16,13 @@ VLDP_OBJS =
 # if we are statically linking VLDP (instead of dynamic)
 # NOTE : these libs must be compiled separately beforehand (as it building a shared vldp)
 ifeq ($(STATIC_VLDP),1)
+#vldp2/libmpeg2/cpu_accel.o vldp2/libmpeg2/cpu_state.o \
+ vldp2/libmpeg2/idct_mmx.o vldp2/libmpeg2/motion_comp_mmx.o \
+ vldp2/libmpeg2/motion_comp.o vldp2/libmpeg2/idct.o 
 VLDP_OBJS = vldp2/vldp/vldp.o vldp2/vldp/vldp_internal.o vldp2/vldp/mpegscan.o \
-	vldp2/libmpeg2/cpu_accel.o vldp2/libmpeg2/alloc.o vldp2/libmpeg2/cpu_state.o vldp2/libmpeg2/decode.o \
-	vldp2/libmpeg2/header.o vldp2/libmpeg2/motion_comp.o vldp2/libmpeg2/idct.o vldp2/libmpeg2/idct_mmx.o \
-	vldp2/libmpeg2/motion_comp_mmx.o vldp2/libmpeg2/slice.o vldp2/libvo/video_out.o vldp2/libvo/video_out_null.o
+	 vldp2/libmpeg2/alloc.o vldp2/libmpeg2/decode.o \
+	vldp2/libmpeg2/header.o \
+	vldp2/libmpeg2/slice.o vldp2/libvo/video_out.o vldp2/libvo/video_out_null.o
 DEFINE_STATIC_VLDP = -DSTATIC_VLDP
 endif
 
@@ -63,7 +66,23 @@ OBJS = ldp-out/*.o cpu/*.o cpu/x86/*.o game/*.o io/*.o timer/*.o ldp-in/*.o vide
 #				glew-2.1.0/src/*.o
 #${VLDP_OBJS} ${SDL_OBJS}
 
-LOCAL_OBJS = daphne.o
+LOCAL_OBJS = daphne.o 
+
+UI_OBJS = ${VLDP_OBJS} drm_display.o \
+	ui/fb_display.o \
+	ui/processdisp.o \
+	ui/parameter.o \
+	ui/keyEvents.o\
+	ui/rthreads/rthreads.o \
+	ui/pcm.o
+#			ui/start.o \
+			ui/uimode.o \
+			ui/jpeg.o \
+			ui/png.o \
+			ui/textdraw.o \
+			ui/graphics.o \
+			ui/resources.o \
+			
 
 ifeq ($(LIBRETRO),1)
  fpic := -fPIC
@@ -71,8 +90,27 @@ SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
 EXE = libdaphne.so
 CFLAGS +=-DLIBRETRO=1 -Ivldp2/include  -D_GNU_SOURCE=1 -D_REENTRANT \
 	-Iui
-UI_OBJS = ${VLDP_OBJS}  
+UI_OBJS = ${VLDP_OBJS} ui/rthreads/rthreads.o ui/parameter.o 
+
+LOCAL_OBJS += libretro/libretro.o \
+	
+	
+#	vldp2/libvo/video_out.o vldp2/libvo/video_out_x11.o \
+	vldp2/libvo/video_out_dx.o vldp2/libvo/video_out_sdl.o \
+	vldp2/libvo/video_out_null.o vldp2/libvo/video_out_pgm.o \
+	vldp2/libvo/yuv2rgb.o vldp2/libvo/yuv2rgb_mlib.o vldp2/libvo/yuv2rgb_mmx.o
+
+	
 endif
+
+#LIBS += -ljpeg -lpng -lasound -ldrm
+
+
+#CFLAGS += -I./ui -I./ui/include -DVID_DRM=1 -DOVERSCAN_PERCENT=0 -Ivldp2/include \
+			-DDEFAULT_ROTATION=ROTATION_NONE -DUSE_DRM=1 \
+# sdl.o
+#main.o
+
 .SUFFIXES:	.cpp
 
 all:	$(UI_OBJS) ${LOCAL_OBJS} sub

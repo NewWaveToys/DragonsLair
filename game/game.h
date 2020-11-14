@@ -81,7 +81,7 @@ public:
 	virtual ~game();	// to avoid compiler warnings
 	bool pre_init();
 	virtual bool init();
-	virtual void start();
+	virtual int start();
 	void pre_shutdown();
 
 	// saves this game's static ram to a compressed file
@@ -103,7 +103,10 @@ public:
 	virtual void input_disable(Uint8);
 	virtual void OnMouseMotion(Uint16 x, Uint16 y, Sint16 xrel, Sint16 yrel);  // Added by ScottD
 	virtual void OnVblank();	// this gets called by the ldp class every vblank (since many games use vblank for their interrupt)
-
+   #ifdef LIBRETRO
+   virtual unsigned get_libretro_button_map(unsigned id);
+   virtual const char *get_libretro_button_name(unsigned id);
+#endif
 	// This optional function will get called 4 times by the ldv1000 driver IF the game driver has first called ldv1000_report_vsync.
 	// If 'bIsStatus' is false, then this is the command strobe.
 	virtual void OnLDV1000LineChange(bool bIsStatus, bool bIsEnabled);
@@ -147,6 +150,9 @@ public:
 	virtual void set_preset(int);	// set up dip switches/rom names, etc with prepared values
 	virtual void set_version(int);	// selects alternate rom revs, or whatever
 	virtual bool set_bank (unsigned char, unsigned char);	// set dip switch values
+	virtual void setbank(unsigned int i, const char* c);
+	virtual int getLives();
+
 	virtual bool handle_cmdline_arg(const char *arg);	// the cmd line will pass on any unknown variables to the game to see if there is a game-specific option to be parsed
 	void disable_crc();  // skips CRC check on ROM load
 	virtual bool load_roms();	// load roms into memory
@@ -172,6 +178,7 @@ public:
 	const char *get_sound_name(int);
 	const char *get_issues();	// does the game have any performance issues the user should know about?
 	void set_issues(const char *);
+	bool get_game_paused();
 	void toggle_game_pause();	// toggles whether the game is paused or not
 	const char *get_shortgamename();	// returns short game name
 #ifdef CPU_DEBUG
@@ -181,6 +188,8 @@ public:
 	// returns m_bMouseEnabled
 	bool getMouseEnabled();
 	void joystick_sound(bool use);
+	void game_pause();
+	void game_resume();
 
 protected:
 	bool m_joystick_sound;

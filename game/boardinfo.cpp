@@ -178,7 +178,7 @@ void print_board_info(unsigned char index,	// which board
 	char sequence_type[160] = { 0 };
 	char s1[160] = { 0 };
 	char board_name[160] = { 0 };
-
+printf("%s =g_game->get_game_type()=%d \n", __FUNCTION__, g_game->get_game_type());
 	// if we know that we are playing Dragon's Lair
 	if ((g_game->get_game_type() == GAME_LAIR) | (g_game->get_game_type() == GAME_DLE1)
 		| (g_game->get_game_type() == GAME_DLE2))

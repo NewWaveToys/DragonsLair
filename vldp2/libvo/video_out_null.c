@@ -39,87 +39,14 @@
 struct yuv_buf g_yuv_buf[YUV_BUF_COUNT];
 
 ////
-#if 1
-typedef struct						 /**** BMP file header structure ****/
-{
-	unsigned int   bfSize;			 /* Size of file */
-	unsigned short bfReserved1; 	 /* Reserved */
-	unsigned short bfReserved2; 	 /* ... */
-	unsigned int   bfOffBits;		 /* Offset to bitmap data */
-} MyBITMAPFILEHEADER;
 
-typedef struct						 /**** BMP file info structure ****/
-{
-	unsigned int   biSize;			 /* Size of info header */
-	int 		   biWidth; 		 /* Width of image */
-	int 		   biHeight;		 /* Height of image */
-	unsigned short biPlanes;		 /* Number of color planes */
-	unsigned short biBitCount;		 /* Number of bits per pixel */
-	unsigned int   biCompression;	 /* Type of compression to use */
-	unsigned int   biSizeImage; 	 /* Size of image data */
-	int 		   biXPelsPerMeter;  /* X pixels per meter */
-	int 		   biYPelsPerMeter;  /* Y pixels per meter */
-	unsigned int   biClrUsed;		 /* Number of colors used */
-	unsigned int   biClrImportant;	 /* Number of important colors */
-} MyBITMAPINFOHEADER;
 
-static	void MySaveBmp(const char* filename, unsigned char *rgbbuf, int width, int height, int pitch)
-{
-	FILE *file;
-	int i;
-	unsigned char *p;
-	MyBITMAPFILEHEADER bfh;
-	MyBITMAPINFOHEADER bih;
-	/* Magic number for file. It does not fit in the header structure due to alignment requirements, so put it outside */
-	unsigned short bfType = 0x4d42;
-
-	bfh.bfReserved1 = 0;
-	bfh.bfReserved2 = 0;
-	bfh.bfSize = 2 + sizeof(MyBITMAPFILEHEADER) + sizeof(MyBITMAPINFOHEADER) + width * height * 2;
-	bfh.bfOffBits = 0x36;
-
-	bih.biSize = sizeof(MyBITMAPINFOHEADER);
-	bih.biWidth = width;
-	bih.biHeight = -height;
-	bih.biPlanes = 1;
-	bih.biBitCount = 16;
-	bih.biCompression = 0;
-	bih.biSizeImage = 0;
-	bih.biXPelsPerMeter = 0;
-	bih.biYPelsPerMeter = 0;
-	bih.biClrUsed = 0;
-	bih.biClrImportant = 0;
-
-	file = fopen(filename, "wb");
-
-	if (!file)
-	{
-		printf("Could not write file\n");
-		return;
-	}
-
-	fwrite(&bfType, 1, sizeof(bfType), file);
-	fwrite(&bfh, 1, sizeof(bfh), file);
-	fwrite(&bih, 1, sizeof(bih), file);
-	//int bufw = pitch / 2;
-	p = rgbbuf;
-	for (i = 0; i < height; i++)
-	{
-		fwrite(p, 2, width, file);
-		p = p + (pitch);
-	}
-
-	//fwrite(rgbbuf, height*width, 4, file);
-	fclose(file);
-}
-static int testi = 0;
-#endif
 static void null_draw_frame (vo_instance_t *instance, uint8_t * const * buf, void *id)
 {
     Sint32 correct_elapsed_ms = 0;	// we want this signed since we compare against actual_elapsed_ms
     Sint32 actual_elapsed_ms = 0;	// we want this signed because it could be negative
 	unsigned int uStallFrames = 0;	// how many frames we have to stall during the loop (for multi-speed playback)
-
+//	printf("%s %d \n", __FUNCTION__,__LINE__);
 	// if we don't need to skip any frames
 	if (!(s_frames_to_skip | s_skip_all))
 	{		
@@ -156,6 +83,7 @@ static void null_draw_frame (vo_instance_t *instance, uint8_t * const * buf, voi
 				// this is the potentially expensive callback that gets the hardware overlay
 				// ready to be displayed, so we do this before we sleep
 				// NOTE : if this callback fails, we don't want to display the frame due to double buffering considerations
+				
 				if (g_in_info->prepare_frame(&g_yuv_buf[(int) id]))
 				{
 #ifndef VLDP_BENCHMARK
@@ -207,11 +135,6 @@ static void null_draw_frame (vo_instance_t *instance, uint8_t * const * buf, voi
 #endif
 						// draw the frame
 						// we are using the pointer 'id' as an index, kind of risky, but convenient :)
-					/*	if (testi % 10 == 0)
-							MySaveBmp("test.bmp", &g_yuv_buf[(int)id], 320,240, 640);
-						else if (testi % 31 == 0)
-							MySaveBmp("test1.bmp", &g_yuv_buf[(int)id], 320, 240, 640);
-						testi++;*/
 						g_in_info->display_frame(&g_yuv_buf[(int) id]);
 #ifndef VLDP_BENCHMARK
 					} // end if we didn't get a new command to interrupt the frame being displayed
@@ -355,6 +278,7 @@ static void null_setup_fbuf (vo_instance_t * _instance,
 	// We are setting an integer value to a pointer ...
 	// Because it is convenient to let the pointer hold the value of this integer for us
 	// Hopefully it doesn't cause any trouble later ;)
+	printf("%s %d \n", __FUNCTION__,__LINE__);
 
     buf[0] = g_yuv_buf[buffer_index].Y;
     buf[1] = g_yuv_buf[buffer_index].U;
@@ -375,6 +299,7 @@ static int null_setup (vo_instance_t * instance, int width, int height,
 		       vo_setup_result_t * result)
 {
 	int i = 0;
+	printf("%s %d \n", __FUNCTION__,__LINE__);
 
 	// UPDATE : I believe these functions are no longer necessary because we do them in
 	// idle_handler_open() now instead.
@@ -418,6 +343,7 @@ static void null_close (vo_instance_t *instance)
 vo_instance_t * vo_null_open ()
 {
     vo_instance_t * instance;
+	printf("%s %d \n", __FUNCTION__,__LINE__);
 
     instance = (vo_instance_t *) malloc (sizeof (vo_instance_t));
     if (instance == NULL)

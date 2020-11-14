@@ -158,7 +158,6 @@ mpo_io *mpo_open(const char *filename, int flags)
 		mode = "ab";
 	}
 	// else unknown... eror
-	
 	io->handle = MPO_FOPEN(filename, mode);
 	if (io->handle)
 	{
@@ -328,6 +327,7 @@ bool mpo_seek(MPO_INT64 offset, seek_type type, mpo_io *io)
 
 void mpo_close(mpo_io *io)
 {
+
 	if (io != NULL)
 	{
 #ifdef WIN32
@@ -340,6 +340,7 @@ void mpo_close(mpo_io *io)
 		io->size = 0;
 		io->time_last_modified = 0;
 		free(io);	// de-allocate
+		io=NULL;
 	}
 	// else we cannot reference a NULL pointer
 }

@@ -100,7 +100,7 @@ void g_cpu_break (char *s)
 
 game::game() :
 	m_game_paused(false),
-	m_game_uses_video_overlay(true),	// since most games do use video overlay, we'll default this to true
+	m_game_uses_video_overlay(false),	// since most games do use video overlay, we'll default this to true
 	m_overlay_size_is_dynamic(false),	// the overlay size is usually static
 	m_video_overlay_scaled(0),  // " " "
 	m_video_overlay_matrix(0),  //
@@ -152,6 +152,11 @@ game::~game()
 	// cleanup logger
 	m_pLogger->DeleteInstance();
 }
+void game::setbank(unsigned int i, const char* c)
+{
+}
+int game::getLives(){return 0;}
+
 void game::joystick_sound(bool use)
 {
 	 m_joystick_sound = use;
@@ -167,7 +172,7 @@ bool game::pre_init()
 	}
 
 	// if we have nvram that we need to load
-	if (m_nvram_size > 0)
+/*	if (m_nvram_size > 0)
 	{	
 		if (m_EEPROM_9536)
 		{
@@ -182,7 +187,7 @@ bool game::pre_init()
 			sram_load(filename.c_str(), m_nvram_begin, m_nvram_size);
 		}
 	}
-	
+	*/
 	return init();
 }
 
@@ -192,19 +197,20 @@ bool game::init()
 	bool result = true;
 	
 	cpu_init();
+	cpu_prexecute();
 	return result;
 }
 
 // generic game start function.  Starts the game playing (usually just begins executing the cpu(s) )
-void game::start()
+int game::start()
 {
-	cpu_execute();
+	return cpu_execute();
 }
 
 // call this instead of shutdown directly
 void game::pre_shutdown()
 {
-	save_sram();
+	//save_sram();
 	shutdown();
 }
 
@@ -349,7 +355,17 @@ void game::OnMouseMotion(Uint16 x, Uint16 y, Sint16 xrel, Sint16 yrel)
 void game::OnVblank()
 {
 }
+#ifdef LIBRETRO
+unsigned game::get_libretro_button_map(unsigned id)
+{
+   return SWITCH_NOTHING;
+}
 
+const char *game::get_libretro_button_name(unsigned id)
+{
+   return "N/A";
+}
+#endif
 void game::OnLDV1000LineChange(bool bIsStatus, bool bIsEnabled)
 {
 	// get rid of warnings
@@ -373,7 +389,11 @@ bool game::video_init()
 	float dy;
 	float srcx;
 	float srcy;
-
+	#if USE_DRM|LIBRETRO
+	 // m_video_screen_width = w = get_screen_w();
+   // m_video_screen_height = h = get_screen_h();
+	result = true;	
+#else
     // set instance variables and local variables to the actual screen (or window) dimension
     m_video_screen_width = w = get_screen_blitter()->w;
     m_video_screen_height = h = get_screen_blitter()->h;
@@ -385,6 +405,7 @@ bool game::video_init()
 		if ((m_video_overlay_width != 0) && (m_video_overlay_height != 0) && (m_palette_color_count != 0))
 		{
 			result = true;	// it's easier to assume true here and find out false, than the reverse
+			
 
             if (m_bFullScale)
 			{
@@ -420,6 +441,7 @@ bool game::video_init()
                     srcy+=dy;
                 } /*endfor*/
             } // end if fullscale is enabled
+		
 
 			// create each buffer
 			for (index = 0; index < m_video_overlay_count; index++)
@@ -434,6 +456,7 @@ bool game::video_init()
 					result = false;
 				}
 			}
+			
 
 			// if we created the surfaces alright, then allocate space for the color palette
 			if (result)
@@ -445,6 +468,7 @@ bool game::video_init()
 					palette_finalize();
 				}
 			}
+			
 		} // end if video overlay is used
 
 		// if the game has not explicitely specified those variables that we need ...
@@ -460,6 +484,7 @@ bool game::video_init()
 	{
 		result = true;
 	}
+	#endif
 
 	return(result);
 }
@@ -468,8 +493,9 @@ bool game::video_init()
 void game::video_shutdown()
 {
 	int index = 0;
-
+#if !(USE_DRM|LIBRETRO)
 	palette_shutdown();	// de-allocate memory in color palette routines
+	
 
 	for (index = 0; index < m_video_overlay_count; index++)
 	{
@@ -480,14 +506,18 @@ void game::video_shutdown()
 			m_video_overlay[index] = NULL;
 		}
 	}
+	
 
 	if (m_video_overlay_scaled != NULL)
 	{
 		SDL_FreeSurface(m_video_overlay_scaled);
 		m_video_overlay_scaled = NULL;
 	}
+	
 
-	MPO_FREE(m_video_overlay_matrix);
+	if(m_video_overlay_matrix)
+		MPO_FREE(m_video_overlay_matrix);
+	#endif
 
 }
 
@@ -510,7 +540,7 @@ void Scale(SDL_Surface* src, SDL_Surface* dst, long* matrix)
 
 // generic function to ensure that the video buffer gets drawn to the screen, will call video_repaint()
 void game::video_blit()
-{
+{//printf("%s %d \n", __FUNCTION__,__LINE__);
 	// if something has actually changed in the game's video (video_blit() will probably get called regularly on each screen refresh,
 	// and we don't want to call the potentially expensive video_repaint() unless we have to)
 	if (m_video_overlay_needs_update)
@@ -521,10 +551,11 @@ void game::video_blit()
 		if (m_active_video_overlay >= m_video_overlay_count)
 		{
 			m_active_video_overlay = 0;
-		}
+		}//printf("%s %d \n", __FUNCTION__,__LINE__);
 		video_repaint();	// call game-specific function to get palette refreshed
 		m_video_overlay_needs_update = false;	// game will need to set this value to true next time it becomes needful for us to redraw the screen
-
+		//printf("%s %d \n", __FUNCTION__,__LINE__);
+#if 0
 		// if we are in non-VLDP mode, then we can blit to the main surface right here,
 		// otherwise we do nothing because the yuv_callback in ldp-vldp.cpp will take care of it
 		if (!g_ldp->is_vldp())
@@ -553,6 +584,7 @@ void game::video_blit()
 			else
 			{
 				vid_blank();	// openGL requires this
+				printf("%s %d \n", __FUNCTION__,__LINE__);
 
 				if (!m_bFullScale)
 				{
@@ -566,26 +598,30 @@ void game::video_blit()
 
 				// else if 'fullscale' is enabled
 				else
-				{
+				{printf("%s %d \n", __FUNCTION__,__LINE__);
 					GLfloat fXScale = (GLfloat) m_video_screen_width / m_video_overlay_width;
 					GLfloat fYScale = (GLfloat) m_video_screen_height / m_video_overlay_height;
+#ifndef HAVE_OPENGLES2
 
 					glPushMatrix();
 					glScalef(fXScale, fYScale, 1.0);
-
+#endif
 					// blit in the center of the screen
 					SDL_Surface *srf = m_video_overlay[m_active_video_overlay];
 					vid_blit(srf,
 						(m_video_screen_width >> 1) - (srf->w >> 1),
 						(m_video_screen_height >> 1) - (srf->h >> 1));
+					#ifndef HAVE_OPENGLES2
 					glPopMatrix();
+					#endif
 				}
 			} // end if using opengl
+			//printf("%s %d \n", __FUNCTION__,__LINE__);
 
 #endif // USE_OPENGL
 			vid_flip();
 		} // end if this isn't VLDP
-
+#endif
 		m_finished_video_overlay = m_active_video_overlay;
 	}
 }
@@ -611,6 +647,7 @@ void game::video_force_blit()
 // sets up the game's palette, this is a game-specific function
 void game::palette_calculate()
 {
+#if !(USE_DRM|LIBRETRO)
 	SDL_Color temp_color = { 0 };
 	
 	// fill color palette with sensible grey defaults
@@ -621,6 +658,7 @@ void game::palette_calculate()
 		temp_color.b = (unsigned char) i;
 		palette_set_color(i, temp_color);
 	}
+	#endif
 }
 
 // redraws the current active video overlay buffer (but doesn't blit anything to the screen)
@@ -1034,7 +1072,7 @@ unsigned game::get_video_visible_lines()
 SDL_Surface *game::get_video_overlay(int index)
 {
 	SDL_Surface *result = NULL;
-
+printf("%s ==%d \n",__FUNCTION__,__LINE__);
 	// safety check
 	if (index < m_video_overlay_count)
 	{
@@ -1046,13 +1084,13 @@ SDL_Surface *game::get_video_overlay(int index)
 
 // gets surface that's being drawn
 SDL_Surface *game::get_active_video_overlay()
-{
+{printf("%s ==%d \n",__FUNCTION__,__LINE__);
 	return m_video_overlay[m_active_video_overlay];
 }
 
 // gets last surface to be completely drawn (so it can be displayed without worrying about tearing or flickering)
 SDL_Surface *game::get_finished_video_overlay()
-{
+{printf("%s ==%d \n",__FUNCTION__,__LINE__);
 	return m_video_overlay[m_finished_video_overlay];
 }
 
@@ -1122,10 +1160,52 @@ void game::set_issues(const char *issues)
 {
 	m_game_issues = issues;
 }
+void game::game_pause()
+{
+//	if (g_ldp->get_status() == LDP_PLAYING)
+	{
+//		char frame[6];
+//		Uint16 cur_frame = g_ldp->get_current_frame();
+
+		cpu_pause();
+		g_ldp->pre_pause();
+
+		// If seek delay is enabled, we can't search here because the seek delay depends
+		//  upon the cpu running (ie pre_think getting called regularly)
+		/*
+		g_ldp->framenum_to_frame(cur_frame, frame);
+		g_ldp->pre_search(frame, false);	// pause the disc on the frame we think we're on (not the frame we're actually on)
+
+		// wait for seek to complete
+		// (using non-blocking seeking to avoid an extra cpu_pause)
+		while (g_ldp->get_status() == LDP_SEARCHING)
+		{
+			make_delay(1);
+		}
+		*/
+
+		m_game_paused = true;		
+	}
+}
+void game::game_resume()
+{
+	if (m_game_paused)
+	{
+		cpu_unpause();
+		g_ldp->pre_play();
+		m_game_paused = false;
+	}
+}
+
+bool game::get_game_paused()
+{
+	return m_game_paused;
+}
 
 void game::toggle_game_pause()
 {
 	// if the game is already paused ...
+	//printf("toggle_game_pause %d \n",g_ldp->get_status());
 	if (m_game_paused)
 	{
 		cpu_unpause();
@@ -1134,7 +1214,7 @@ void game::toggle_game_pause()
 	}
 
 	// for now we will only support game pausing if the disc is playing
-	else if (g_ldp->get_status() == LDP_PLAYING)
+	else if (g_ldp->get_status() == LDP_PLAYING/*||g_ldp->get_status()==LDP_PAUSED*/)
 	{
 //		char frame[6];
 //		Uint16 cur_frame = g_ldp->get_current_frame();

@@ -126,7 +126,7 @@ const char *set_ea_info( int what, unsigned address, int size, int acc )
 
 	return(addrstr);
 }
-
+ 
 void debug_prompt()
 {
 	char s[81] = { 0 };
